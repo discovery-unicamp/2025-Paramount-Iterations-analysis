@@ -160,6 +160,7 @@ def parse_user_data(user, parsed_data, csv_files):
             if any(name in instance_csv_file.lower() for name in ['jeferson']):
                 time_conversion_factor = 0.001  # Convert usec to msec
 
+            # Apparently, the results collected by Thais_Camacho switched columns abs_time and time. Adjusting for this case.
             if user == "Thais_Camacho":
                 PI_time_col = 'abs_time'
                 ABS_time_col = 'time'

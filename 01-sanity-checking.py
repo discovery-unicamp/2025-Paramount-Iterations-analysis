@@ -395,6 +395,8 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             row_data["warnings"] = f"(number of samples - {len(PIs_sum_l)} - too small for statistics)"
 
 
+                    for pm in proxy_metrics:
+                        row_data[f"{pm} vs All PIs - chartname"] = ""
                     if (charts_output_directory):
                         # Plot chart 
                         if (len(wall_clock_time_l) >= 3):
@@ -410,22 +412,20 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                                             plot_ideal = True,
                                             charts_output_directory = charts_output_directory)
 
-                        for pm in proxy_metrics:
-                            filename = plot_correlation(X_values=PIs_sum_l, 
-                                            X_label="Sum of PIs (ms)",
-                                            Y_values=proxy_metrics_l[pm], 
-                                            Y_label=pm+' (ms)',
-                                            user = user,
-                                            app_name = app,
-                                            ds = ds,
-                                            instance_names = instance_names_l,
-                                            filename_suffix = pm.lower().replace(" ","_") + '_vs_sum_pi',
-                                            plot_ideal = False,
-                                            charts_output_directory = charts_output_directory)
-                            row_data[f"{pm} vs All PIs - chartname"] = filename
-                    else:
-                        for pm in proxy_metrics:
-                            row_data[f"{pm} vs All PIs - chartname"] = ""
+                        if (len(PIs_sum_l) >= 3):
+                            for pm in proxy_metrics:
+                                filename = plot_correlation(X_values=PIs_sum_l, 
+                                                X_label="Sum of PIs (ms)",
+                                                Y_values=proxy_metrics_l[pm], 
+                                                Y_label=pm+' (ms)',
+                                                user = user,
+                                                app_name = app,
+                                                ds = ds,
+                                                instance_names = instance_names_l,
+                                                filename_suffix = pm.lower().replace(" ","_") + '_vs_sum_pi',
+                                                plot_ideal = False,
+                                                charts_output_directory = charts_output_directory)
+                                row_data[f"{pm} vs All PIs - chartname"] = filename
 
                               
                     print_row(row_data)    
