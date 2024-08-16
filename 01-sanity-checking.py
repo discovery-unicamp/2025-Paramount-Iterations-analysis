@@ -247,7 +247,8 @@ def plot_correlation(X_values,
     sum_coorelation = sum(X_values)/sum(Y_values)
     min_coorelation = min(X_values)/min(Y_values)
     median_coorelation = statistics.median(X_values)/statistics.median(Y_values)
-    print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
+    
+    #print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
 
     correlation_factor_str = ''
     # if abs(r_squared - 1.0) < 0.1 and abs(median_coorelation - 1.0) > 0.01:
