@@ -79,18 +79,35 @@ def parse_instance_dataframe(instance_name, df, data, time_conversion_factor, PI
     if ABS_time_col in df.columns:
         df[ABS_time_col] = df[ABS_time_col]*time_conversion_factor
         # Jeferson, não deveria ser o máximo de cada rank?
-        wallclock_time = df.groupby('rank')[ABS_time_col].max().sum()
+        wallclock_time = df.groupby('rank')[ABS_time_col].max().max()
         data["wallclock_time"] = float(wallclock_time)
 
     inst_name, inst_count = instance_name.split('-')
     inst_price = INSTANCE_PRICES[inst_name]
     data["Instance Price"] = inst_price
+    data["Instance Name"]  = inst_name
+    data["Instance Count"] = inst_count
+
+    verbose(f'Instance Price: {inst_price}', 5)
+    verbose(f'Instance Name:  {inst_name}', 5)
+    verbose(f'Instance Count: {inst_count}', 5)
+
+    if 'rank' not in df.keys():
+        data["PI Samples rank0"] = len(df)
+    else:        
+        data["PI Samples rank0"] = len(df[df['rank'] == 0])
+        df = df[df["rank"] == 0]
+
+    verbose(f'PI Samples registerd in rank0: {data["PI Samples rank0"]}', 5)
+    verbose(f'Total PI Samples registered  : {len(df)}', 5)
+    verbose(f'Total / rank0 PI Samples     : {len(df)/data["PI Samples rank0"]}', 5)
 
     df = df[PI_time_col].reset_index(drop=True)
     # Extract all the proxy information from the dataframe
     for proxy, operations in proxy_set.items():
         data[proxy] = operations[0](df, *operations[1])
         #print("Proxy:", proxy, "--", data[proxy])
+
 #=============================================================================================
 
 #=============================================================================================
@@ -127,7 +144,6 @@ def parse_user_data(user, parsed_data, csv_files):
         # List of CSV files for user / app
         user_app_csv_files = list(filter(lambda x: app_name in x, user_csv_files))
 
-        instance_dfs = {}
         for instance_csv_file in user_app_csv_files:
 
             dataset_name = instance_csv_file.split('/')[-2]

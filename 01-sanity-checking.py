@@ -229,9 +229,8 @@ def plot_correlation(X_values,
                      app_name, 
                      ds,
                      instance_names, 
-                     filename_suffix, 
                      plot_ideal,
-                     charts_output_directory):
+                     filename):
     
     if len(instance_names) < 3:
         print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_name}')
@@ -283,9 +282,6 @@ def plot_correlation(X_values,
 
     fig.legend(loc='outside lower center', ncol=4, fancybox=True, shadow=True, mode="expand")
 
-    basename = f'{user.replace("/", "-")}_{app_name[:20]}-{ds}-{r_squared:.2f}'
-    filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
-
     if 0:
         plt.pause(1)  # Display for 1 second
     else:
@@ -301,7 +297,8 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
     proxy_metrics = ["Second PI", "From 2 to 5", "From 2 to 10", "0.5_s", "0.5_s-first"]
     proxy_metrics_2 = ["R2*", "R2", "Intercept", "Slope", "Intercept/min PIs sum", "chartname"]
     csv_fields =  ["Idx", "group", "app", "user", "dataset", "# instances", "min wallclock_time", "max wallclock_time", 
-                   "min PIs sum", "max PIs sum"] + \
+                   "min PIs sum", "max PIs sum", "Rank 0 min PI samples", "Rank 0 max PI samples", "Rank 0 min/max PI sample ratio"] + \
+                  [ "Wallclock vs All PIs - chartname"] + \
                   [ f"{pm} vs All PIs - {pm2}" for pm in proxy_metrics for pm2 in proxy_metrics_2 ] +\
                   ["warnings"]
 
@@ -351,6 +348,9 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                     proxy_metrics_l = { pm : [] for pm in proxy_metrics}
                     instance_names_l = []
 
+                    rank0_min_samples = ""
+                    rank0_max_samples = ""
+
                     # proxy_metrics = ["Second PI", "From 2 to 5", "From 2 to 10", "0.5_s", "0.5_s-first"]
                     for instance, usr_app_ds_instance_data in usr_app_ds_data.items():
                         instance_names_l.append(instance)
@@ -360,7 +360,16 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                         for pm in proxy_metrics:
                             proxy_metrics_l[pm].append(float(usr_app_ds_instance_data[pm]["mean"]))
 
+                        rank0_samples = usr_app_ds_instance_data["PI Samples rank0"]
+                        if rank0_min_samples == "": rank0_min_samples = rank0_samples
+                        if rank0_samples < rank0_min_samples: rank0_min_samples = rank0_samples
+                        if rank0_max_samples == "": rank0_max_samples = rank0_samples
+                        if rank0_samples > rank0_max_samples: rank0_max_samples = rank0_samples
+
                     row_data["# instances"] = len(PIs_sum_l)
+                    row_data["Rank 0 min PI samples"] = rank0_min_samples
+                    row_data["Rank 0 max PI samples"] = rank0_max_samples
+                    row_data["Rank 0 min/max PI sample ratio"] = rank0_min_samples/rank0_max_samples
 
                     # Summarize results
                     if len(wall_clock_time_l) > 0:
@@ -395,11 +404,14 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             row_data["warnings"] = f"(number of samples - {len(PIs_sum_l)} - too small for statistics)"
 
 
+                    row_data[f"Wallclock vs All PIs - chartname"] = ""
                     for pm in proxy_metrics:
                         row_data[f"{pm} vs All PIs - chartname"] = ""
                     if (charts_output_directory):
                         # Plot chart 
+                        basename = f'{user.replace("/", "-")}_{app[:20]}-{ds}'
                         if (len(wall_clock_time_l) >= 3):
+                            filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi.pdf')
                             plot_correlation(X_values=PIs_sum_l, 
                                              X_label="Sum of PIs (ms)",
                                             Y_values=wall_clock_time_l, 
@@ -408,13 +420,15 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                                             app_name = app,
                                             ds = ds,
                                             instance_names = instance_names_l,
-                                            filename_suffix = 'wallclock_vs_sum_pi',
                                             plot_ideal = True,
-                                            charts_output_directory = charts_output_directory)
+                                            filename = filename)
+                            row_data[f"Wallclock vs All PIs - chartname"] = filename
 
                         if (len(PIs_sum_l) >= 3):
                             for pm in proxy_metrics:
-                                filename = plot_correlation(X_values=PIs_sum_l, 
+                                filename_suffix = pm.lower().replace(" ","_") + '_vs_sum_pi'
+                                filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
+                                plot_correlation(X_values=PIs_sum_l, 
                                                 X_label="Sum of PIs (ms)",
                                                 Y_values=proxy_metrics_l[pm], 
                                                 Y_label=pm+' (ms)',
@@ -422,9 +436,8 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                                                 app_name = app,
                                                 ds = ds,
                                                 instance_names = instance_names_l,
-                                                filename_suffix = pm.lower().replace(" ","_") + '_vs_sum_pi',
                                                 plot_ideal = False,
-                                                charts_output_directory = charts_output_directory)
+                                                filename = filename)
                                 row_data[f"{pm} vs All PIs - chartname"] = filename
 
                               
