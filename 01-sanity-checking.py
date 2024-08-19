@@ -3,28 +3,30 @@
 # Description: This script is used to parse and extract log information from the CSV files.
 # The parsed information is organized in a dictionary and stored on the output file.
 
+import argparse
 import os
-import glob
-import numpy as np
-from datetime import date
-import pandas as pd
+import pickle
+import statistics
 
-from instance_aliases import INSTANCE_ALIASES
-from instance_prices import INSTANCE_PRICES
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+
+import app_group
 
 #=============================================================================================
 # Functions to dump data
 #=============================================================================================
 
 def abbreviate(s, max_sz=20):
-    if len(s) <= max_sz: 
+    if len(s) <= max_sz:
         return s
-    else: 
+    else:
         half = max_sz//2
         return s[0:half]+"..."+s[-half:]
 
 def print_in_line(v):
-    if (type(v) is str) or (type(v) is int) or (type(v) is float): 
+    if (type(v) is str) or (type(v) is int) or (type(v) is float):
         return True
     else:
         #print(type(v))
@@ -66,7 +68,7 @@ def verbose(msg, level=0):
 
 # ====================================================
 def wallclock_time_sanity_check(data):
-    
+
     for user, user_data in data["Users"].items():
         verbose("+- "+str(user),1)
         for app, usr_app_data in user_data["apps"].items():
@@ -77,7 +79,7 @@ def wallclock_time_sanity_check(data):
                     csv_filename = usr_app_ds_instance_data["csv_filename"]
                     verbose("|  |  |  +- "+str(instance),4)
                     verbose("|  |  |  |  +- PIs sum  : "+str(usr_app_ds_instance_data["Real"]["sum"]),5)
-                    if not "wallclock_time" in usr_app_ds_instance_data:
+                    if "wallclock_time" not in usr_app_ds_instance_data:
                         warning(f"(missing wallclock_time) {user} - {app} - {ds} - {instance} ",csv_filename)
                     else:
                         # Has wall_clock time
@@ -91,7 +93,7 @@ def wallclock_time_sanity_check(data):
                             if PIs_wallclock_ratio < 0.90:
                                 warning(f"(sum_of_PIs / wallclock time ratio is {PIs_wallclock_ratio:.2f}) -- {user} - {app} - {ds} - {instance}",csv_filename)
 # ====================================================
-def print_apps(data):    
+def print_apps(data):
     for user, user_data in data["Users"].items():
         verbose("+- "+str(user),1)
         for app, usr_app_data in user_data["apps"].items():
@@ -101,14 +103,13 @@ def print_apps(data):
 def wallclock_time_sanity_check_by_app(data):
 
     # Reorganize data: app group -> app -> user -> dataset -> instance -> ...
-    import app_group    
     app_data = {}
     for user, user_data in data["Users"].items():
         for app, usr_app_data in user_data["apps"].items():
             group = app_group.app_group[app]
-            if not group in app_data:
+            if group not in app_data:
                 app_data[group] = {}
-            if not app in app_data[group]:
+            if app not in app_data[group]:
                 app_data[group][app] = {}
             if user in app_data[group][app]:
                 warning(f"USER {user} already in app_data[{group}][{app}]")
@@ -127,7 +128,7 @@ def wallclock_time_sanity_check_by_app(data):
                         csv_filename = usr_app_ds_instance_data["csv_filename"]
                         verbose("|  |  |  |  +- "+str(instance),4)
                         verbose("|  |  |  |  |  +- PIs sum  : "+str(usr_app_ds_instance_data["Real"]["sum"]),5)
-                        if not "wallclock_time" in usr_app_ds_instance_data:
+                        if "wallclock_time" not in usr_app_ds_instance_data:
                             warning(f"(missing wallclock_time) {user} - {app} - {ds} - {instance} ",csv_filename)
                         else:
                             # Has wall_clock time
@@ -146,7 +147,7 @@ def wallclock_time_sanity_check_by_app(data):
 def generate_csv_analysis_per_instance(data):
 
     proxy_metrics = ["Second PI", "From 2 to 5", "From 2 to 10", "0.5_s", "0.5_s-first"]
-    csv_fields =  ["group", "app", "user", "dataset", "instance", "wallclock_time", 
+    csv_fields =  ["group", "app", "user", "dataset", "instance", "wallclock_time",
                 "PIs sum", "PIs/wallclock_time"] + proxy_metrics + ["csv_filename", "warnings"]
 
     def print_row(row_data):
@@ -160,14 +161,13 @@ def generate_csv_analysis_per_instance(data):
     print()
 
     # Reorganize data: app group -> app -> user -> dataset -> instance -> ...
-    import app_group    
     app_data = {}
     for user, user_data in data["Users"].items():
         for app, usr_app_data in user_data["apps"].items():
             group = app_group.app_group[app]
-            if not group in app_data:
+            if group not in app_data:
                 app_data[group] = {}
-            if not app in app_data[group]:
+            if app not in app_data[group]:
                 app_data[group][app] = {}
             if user in app_data[group][app]:
                 warning(f"USER {user} already in app_data[{group}][{app}]")
@@ -198,7 +198,7 @@ def generate_csv_analysis_per_instance(data):
                         for proxy_metric in proxy_metrics:
                             row_data[proxy_metric] = usr_app_ds_instance_data[proxy_metric]["mean"]
 
-                        if not "wallclock_time" in usr_app_ds_instance_data:
+                        if "wallclock_time" not in usr_app_ds_instance_data:
                             row_data["wallclock_time"] = ""
                             row_data["PIs/wallclock_time"] = ""
                             row_data["warnings"] += "(missing wallclock_time) "
@@ -218,20 +218,18 @@ def generate_csv_analysis_per_instance(data):
 
 # ====================================================
 
-import matplotlib.pyplot as plt
-import statistics
 
-def plot_correlation(X_values, 
+def plot_correlation(X_values,
                      X_label,
-                     Y_values, 
+                     Y_values,
                      Y_label,
-                     user, 
-                     app_name, 
+                     user,
+                     app_name,
                      ds,
-                     instance_names, 
+                     instance_names,
                      plot_ideal,
                      filename):
-    
+
     if len(instance_names) < 3:
         print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_name}')
         return
@@ -246,7 +244,7 @@ def plot_correlation(X_values,
     sum_coorelation = sum(X_values)/sum(Y_values)
     min_coorelation = min(X_values)/min(Y_values)
     median_coorelation = statistics.median(X_values)/statistics.median(Y_values)
-    
+
     #print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
 
     correlation_factor_str = ''
@@ -292,11 +290,10 @@ def plot_correlation(X_values,
 
 
 def generate_csv_analysis_per_application(data, charts_output_directory):
-    import scipy
 
     proxy_metrics = ["Second PI", "From 2 to 5", "From 2 to 10", "0.5_s", "0.5_s-first"]
     proxy_metrics_2 = ["R2*", "R2", "Intercept", "Slope", "Intercept/min PIs sum", "chartname"]
-    csv_fields =  ["Idx", "group", "app", "user", "dataset", "# instances", "min wallclock_time", "max wallclock_time", 
+    csv_fields =  ["Idx", "group", "app", "user", "dataset", "# instances", "min wallclock_time", "max wallclock_time",
                    "min PIs sum", "max PIs sum", "Rank 0 min PI samples", "Rank 0 max PI samples", "Rank 0 min/max PI sample ratio"] + \
                   [ "Wallclock vs All PIs - chartname"] + \
                   [ f"{pm} vs All PIs - {pm2}" for pm in proxy_metrics for pm2 in proxy_metrics_2 ] +\
@@ -313,14 +310,13 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
     print()
 
     # Reorganize data: app group -> app -> user -> dataset -> instance -> ...
-    import app_group    
     app_data = {}
     for user, user_data in data["Users"].items():
         for app, usr_app_data in user_data["apps"].items():
             group = app_group.app_group[app]
-            if not group in app_data:
+            if group not in app_data:
                 app_data[group] = {}
-            if not app in app_data[group]:
+            if app not in app_data[group]:
                 app_data[group][app] = {}
             if user in app_data[group][app]:
                 warning(f"USER {user} already in app_data[{group}][{app}]")
@@ -374,7 +370,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                     # Summarize results
                     if len(wall_clock_time_l) > 0:
                         row_data["min wallclock_time"] = min(wall_clock_time_l)
-                        row_data["max wallclock_time"] = max(wall_clock_time_l) 
+                        row_data["max wallclock_time"] = max(wall_clock_time_l)
                     else:
                         row_data["min wallclock_time"] = ""
                         row_data["max wallclock_time"] = ""
@@ -404,17 +400,17 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             row_data["warnings"] = f"(number of samples - {len(PIs_sum_l)} - too small for statistics)"
 
 
-                    row_data[f"Wallclock vs All PIs - chartname"] = ""
+                    row_data["Wallclock vs All PIs - chartname"] = ""
                     for pm in proxy_metrics:
                         row_data[f"{pm} vs All PIs - chartname"] = ""
                     if (charts_output_directory):
-                        # Plot chart 
+                        # Plot chart
                         basename = f'{user.replace("/", "-")}_{app[:20]}-{ds}'
                         if (len(wall_clock_time_l) >= 3):
                             filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi.pdf')
-                            plot_correlation(X_values=PIs_sum_l, 
+                            plot_correlation(X_values=PIs_sum_l,
                                              X_label="Sum of PIs (ms)",
-                                            Y_values=wall_clock_time_l, 
+                                            Y_values=wall_clock_time_l,
                                             Y_label='Total execution time (ms)',
                                             user = user,
                                             app_name = app,
@@ -422,15 +418,15 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                                             instance_names = instance_names_l,
                                             plot_ideal = True,
                                             filename = filename)
-                            row_data[f"Wallclock vs All PIs - chartname"] = filename
+                            row_data["Wallclock vs All PIs - chartname"] = filename
 
                         if (len(PIs_sum_l) >= 3):
                             for pm in proxy_metrics:
                                 filename_suffix = pm.lower().replace(" ","_") + '_vs_sum_pi'
                                 filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
-                                plot_correlation(X_values=PIs_sum_l, 
+                                plot_correlation(X_values=PIs_sum_l,
                                                 X_label="Sum of PIs (ms)",
-                                                Y_values=proxy_metrics_l[pm], 
+                                                Y_values=proxy_metrics_l[pm],
                                                 Y_label=pm+' (ms)',
                                                 user = user,
                                                 app_name = app,
@@ -440,17 +436,14 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                                                 filename = filename)
                                 row_data[f"{pm} vs All PIs - chartname"] = filename
 
-                              
-                    print_row(row_data)    
+
+                    print_row(row_data)
                     row_data["Idx"] += 1
 
 
 # ====================================================
 
 if __name__ == '__main__':
-
-    import argparse
-    import pickle
 
     # Initialize parser
     parser = argparse.ArgumentParser()
@@ -483,7 +476,7 @@ if __name__ == '__main__':
     file = open(args.input_file, 'rb')
     data = pickle.load(file)
     file.close()
-    
+
     if args.dump_data:
         print_object(data, ".")
 
@@ -497,5 +490,3 @@ if __name__ == '__main__':
         generate_csv_analysis_per_application(data, args.application_charts_dir)
 
 # ====================================================
-
-

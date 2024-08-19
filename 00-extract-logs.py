@@ -3,10 +3,12 @@
 # Description: This script is used to parse and extract log information from the CSV files.
 # The parsed information is organized in a dictionary and stored on the output file.
 
-import os
+import argparse
 import glob
+import os
+import pickle
+
 import numpy as np
-from datetime import date
 import pandas as pd
 
 from instance_aliases import INSTANCE_ALIASES
@@ -94,7 +96,7 @@ def parse_instance_dataframe(instance_name, df, data, time_conversion_factor, PI
 
     if 'rank' not in df.keys():
         data["PI Samples rank0"] = len(df)
-    else:        
+    else:
         data["PI Samples rank0"] = len(df[df['rank'] == 0])
         df = df[df["rank"] == 0]
 
@@ -166,11 +168,11 @@ def parse_user_data(user, parsed_data, csv_files):
 
             # Parse CSV file
             df = pd.read_csv(instance_csv_file, dtype=np.float64)
-            
+
             if df.size == 0:
                 warning(f'Could not extract information from CSV file: {instance_csv_file}')
                 continue
-            
+
             # FIX results from Jeferson's experiments: Convert time from sec to msec
             time_conversion_factor = 1000  # Convert sec to msec
             if any(name in instance_csv_file.lower() for name in ['jeferson']):
@@ -184,9 +186,9 @@ def parse_user_data(user, parsed_data, csv_files):
                 PI_time_col = 'time'
                 ABS_time_col = 'abs_time'
 
-            parse_instance_dataframe(instance_name, 
-                                     df, 
-                                     parsed_data["Users"][user]["apps"][app_name][dataset_name][instance_name], 
+            parse_instance_dataframe(instance_name,
+                                     df,
+                                     parsed_data["Users"][user]["apps"][app_name][dataset_name][instance_name],
                                      time_conversion_factor,
                                      PI_time_col, ABS_time_col)
 #=============================================================================================
@@ -207,9 +209,6 @@ def verbose(msg, level=0):
 # ====================================================
 
 if __name__ == '__main__':
-
-    import argparse
-    import pickle
 
     # Initialize parser
     parser = argparse.ArgumentParser()
