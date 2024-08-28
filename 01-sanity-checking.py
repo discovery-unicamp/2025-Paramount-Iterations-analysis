@@ -13,6 +13,7 @@ import numpy as np
 import scipy
 
 import app_group
+from app_aliases import app_aliases
 
 # =============================================================================================
 # Functions to dump data
@@ -253,8 +254,10 @@ def generate_csv_analysis_per_instance(data):
 
 
 def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, instance_names, plot_ideal, filename):
+    app_alias = app_aliases[app_name]
+
     if len(instance_names) < 3:
-        print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_name}')
+        print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_alias}/{app_name}')
         return
 
     fig, ax = plt.subplots(layout='constrained')
@@ -315,7 +318,7 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     plt.ylabel(Y_label)
 
     # Set title including the R^2 value
-    plt.title(f'{X_label} vs {Y_label} - $R^2 = {r_squared:.2f}$\n{app_name}-{ds}{correlation_factor_str}')
+    plt.title(f'{X_label} vs {Y_label} - $R^2 = {r_squared:.2f}$\n{app_alias}-{ds}{correlation_factor_str}')
 
     fig.legend(loc='outside lower center', ncol=4, fancybox=True, shadow=True, mode='expand')
 
