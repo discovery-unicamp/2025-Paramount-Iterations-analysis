@@ -6,7 +6,6 @@
 import argparse
 import os
 import pickle
-import statistics
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +13,7 @@ import scipy
 
 import app_group
 from app_aliases import app_aliases
+from colors import COLORS
 
 # =============================================================================================
 # Functions to dump data
@@ -73,6 +73,40 @@ verbosity_level = 0
 def verbose(msg, level=0):
     if level <= verbosity_level:
         print(msg)
+
+
+# def rounded_linspace(start, end, num_points):
+#     """
+#     Generate evenly spaced, rounded values between `start` and `end` with `num_points` points.
+
+#     Parameters:
+#     - start: The starting value of the range.
+#     - end: The ending value of the range.
+#     - num_points: The number of points to generate.
+
+#     Returns:
+#     - A numpy array of rounded values.
+#     """
+#     # Generate intermediate values
+#     values = np.linspace(start, end, num_points)
+
+#     # Calculate the spacing between points
+#     spacing = (end - start) / (num_points - 1)
+
+#     # Determine precision based on spacing
+#     if spacing > 0:
+#         # Calculate the precision based on the magnitude of spacing
+#         precision = -int(np.floor(np.log10(spacing)))
+#         precision = max(precision, 0)  # Ensure precision is at least 0
+#     else:
+#         precision = 0
+
+#     # Round values
+#     rounded_values = np.round(values, precision)
+
+#     # print(start, end, num_points, precision, '--->',rounded_values)
+
+#     return rounded_values
 
 
 # ====================================================
@@ -267,9 +301,9 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     correlation_xy = correlation_matrix[0, 1]
     r_squared = correlation_xy**2
 
-    sum_coorelation = sum(X_values) / sum(Y_values)
-    min_coorelation = min(X_values) / min(Y_values)
-    median_coorelation = statistics.median(X_values) / statistics.median(Y_values)
+    # sum_coorelation = sum(X_values) / sum(Y_values)
+    # min_coorelation = min(X_values) / min(Y_values)
+    # median_coorelation = statistics.median(X_values) / statistics.median(Y_values)
 
     # print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
 
@@ -280,14 +314,37 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     # print(f'Fixing correlation by factor of {median_coorelation:.3f}: {app_name}')
     # Y_values = [value * median_coorelation for value in Y_values]
 
-    # Plot ideal trendline (x=y)
-    min_val = min(min(X_values), min(Y_values))
-    max_val = max(max(X_values), max(Y_values))
+    # Plot each point with its corresponding instance name
+    for i, (x, y) in enumerate(zip(X_values, Y_values)):
+        plt.scatter(x, y, label=instance_names[i], zorder=10, color=COLORS[i])
 
+    # Get the current x and y limits
+    data_xlim = plt.xlim()
+    data_ylim = plt.ylim()
+
+    # Bring xlim and ylim to 0 if they are close to 0
+    fit_threshould = 0.2
+    min_xlim, max_xlim = data_xlim
+    if abs(min_xlim/max_xlim) < fit_threshould:
+        data_xlim = (0, max_xlim)
+    min_ylim, max_ylim = data_ylim
+    if abs(min_ylim/max_ylim) < fit_threshould:
+        data_ylim = (0, max_ylim)
+
+    # Plot trendline
+    fit = np.polyfit(X_values, Y_values, 1)
+    poly = np.poly1d(fit)
+
+    # Calculate the corresponding y values for the x limits
+    y_at_xmin = poly(data_xlim[0])
+    y_at_xmax = poly(data_xlim[1])
+
+    # Plot ideal trendline (x=y)
+    trend_lines = dict()
     if plot_ideal:
-        plt.plot(
-            [min_val, max_val],
-            [min_val, max_val],
+        trend_lines['Ideal'], = plt.plot(
+            [data_xlim[0], data_xlim[1]],
+            [data_ylim[0], data_ylim[1]],
             color='#aaaaaa',
             linestyle='-',
             linewidth=1,
@@ -295,32 +352,50 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
             zorder=0,
         )
 
-    # Plot trendline
-    fit = np.polyfit(X_values, Y_values, 1)
-    poly = np.poly1d(fit)
-    plt.plot(
-        [min_val, max_val],
-        poly([min_val, max_val]),
+    # Plot the line using the current x limits and the corresponding y values
+    trend_lines['Trend'], = plt.plot(
+        [data_xlim[0], data_xlim[1]],
+        [y_at_xmin, y_at_xmax],
         color='#ff000070',
         linestyle='--',
         linewidth=2,
         label='_nolegend_',
         zorder=5,
     )
-    # plt.plot(X_values, poly(X_values), color='#ff000050', linestyle='--', linewidth=1.3, label='_nolegend_', zorder=5)
-    # plt.plot([min(X_values), max(X_values)], poly([min(X_values), max(X_values)]), color='#ff000050', linestyle=(0, (5, 10)), linewidth=1.3, label='_nolegend_', zorder=5)
 
-    # Plot each point with its corresponding instance name
-    for i, (x, y) in enumerate(zip(X_values, Y_values)):
-        plt.scatter(x, y, label=instance_names[i], zorder=10)
-
-    plt.xlabel(X_label)
-    plt.ylabel(Y_label)
+    trend_legend = plt.legend(trend_lines.values(), trend_lines.keys(), loc=4)
 
     # Set title including the R^2 value
     plt.title(f'{X_label} vs {Y_label} - $R^2 = {r_squared:.2f}$\n{app_alias}-{ds}{correlation_factor_str}')
 
-    fig.legend(loc='outside lower center', ncol=4, fancybox=True, shadow=True, mode='expand')
+    # c5.xlarge-1
+    instance_max_name = max([len(i) for i in instance_names])
+    ncol = 3
+    if instance_max_name < 13:
+        ncol = 5
+    elif instance_max_name < 16:
+        ncol = 4
+    fig.legend(loc='outside lower center', ncol=ncol, fancybox=True, shadow=True, mode='expand')
+    fig.add_artist(trend_legend)
+
+    # # Set a fixed number of ticks on axis
+    # # x_ticks = ax.get_xticks()
+    # rounded_values = rounded_linspace(data_xlim[0], data_xlim[1], 7)
+    # ax.xaxis.set_ticks(rounded_values)
+    # # ax.set_xticklabels([f"{tick:.2e}" for tick in rounded_values])
+
+    # # y_ticks = ax.get_yticks()
+    # ax.yaxis.set_ticks(rounded_linspace(data_ylim[0], data_ylim[1], 7))
+    # # ax.yaxis.set_ticks(np.linspace(*data_ylim, 8))
+
+    # Ensure the plot limits are ajusted
+    plt.xlim(data_xlim)
+    plt.ylim(data_ylim)
+
+    plt.xlabel(X_label)
+    plt.ylabel(Y_label)
+
+    plt.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
 
     if 0:
         plt.pause(1)  # Display for 1 second
@@ -383,10 +458,10 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
     for group, group_data in app_data.items():
         verbose('+- ' + str(group), 1)
         row_data['group'] = group
-        for app, app_data in group_data.items():
+        for app, group_app_data in group_data.items():
             verbose('|  +- ' + str(app), 2)
             row_data['app'] = app
-            for user, user_data in app_data.items():
+            for user, user_data in group_app_data.items():
                 verbose('|  |  +- ' + str(user), 3)
                 row_data['user'] = user
                 for ds, usr_app_ds_data in user_data.items():
@@ -403,7 +478,9 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                     rank0_max_samples = ''
 
                     # proxy_metrics = ["Second PI", "From 2 to 5", "From 2 to 10", "0.5_s", "0.5_s-first"]
-                    for instance, usr_app_ds_instance_data in usr_app_ds_data.items():
+                    # for instance, usr_app_ds_instance_data in usr_app_ds_data.items():
+                    for instance in sorted(usr_app_ds_data):
+                        usr_app_ds_instance_data = usr_app_ds_data[instance]
                         instance_names_l.append(instance)
                         if 'wallclock_time' in usr_app_ds_instance_data:
                             wall_clock_time_l.append(float(usr_app_ds_instance_data['wallclock_time']))
@@ -502,6 +579,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
 
                     print_row(row_data)
                     row_data['Idx'] += 1
+        # break
 
 
 # ====================================================
