@@ -325,10 +325,10 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     # Bring xlim and ylim to 0 if they are close to 0
     fit_threshould = 0.2
     min_xlim, max_xlim = data_xlim
-    if abs(min_xlim/max_xlim) < fit_threshould:
+    if abs(min_xlim / max_xlim) < fit_threshould:
         data_xlim = (0, max_xlim)
     min_ylim, max_ylim = data_ylim
-    if abs(min_ylim/max_ylim) < fit_threshould:
+    if abs(min_ylim / max_ylim) < fit_threshould:
         data_ylim = (0, max_ylim)
 
     # Plot trendline
@@ -342,7 +342,7 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     # Plot ideal trendline (x=y)
     trend_lines = dict()
     if plot_ideal:
-        trend_lines['Ideal'], = plt.plot(
+        (trend_lines['Ideal'],) = plt.plot(
             [data_xlim[0], data_xlim[1]],
             [data_ylim[0], data_ylim[1]],
             color='#aaaaaa',
@@ -353,7 +353,7 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
         )
 
     # Plot the line using the current x limits and the corresponding y values
-    trend_lines['Trend'], = plt.plot(
+    (trend_lines['Trend'],) = plt.plot(
         [data_xlim[0], data_xlim[1]],
         [y_at_xmin, y_at_xmax],
         color='#ff000070',
@@ -425,7 +425,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
             'Rank 0 min/max PI sample ratio',
         ]
         + ['Wallclock vs All PIs - chartname']
-        + [f'{pm} vs All PIs - {pm2}' for pm in proxy_metrics for pm2 in proxy_metrics_2]
+        + [f'{pm_type} vs All PIs - {pm2}' for pm in proxy_metrics for pm2 in proxy_metrics_2 for pm_type in (pm, f'{pm}-Cost')]
         + ['warnings']
     )
 
@@ -470,8 +470,11 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                     row_data['warnings'] = ''
 
                     wall_clock_time_l = []
+                    wall_clock_cost_l = []
                     PIs_sum_l = []
+                    PIs_cost_l = []
                     proxy_metrics_l = {pm: [] for pm in proxy_metrics}
+                    proxy_metrics_l.update({f'{pm}-Cost': [] for pm in proxy_metrics})
                     instance_names_l = []
 
                     rank0_min_samples = ''
@@ -482,11 +485,19 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                     for instance in sorted(usr_app_ds_data):
                         usr_app_ds_instance_data = usr_app_ds_data[instance]
                         instance_names_l.append(instance)
+                        instance_cost = (
+                            usr_app_ds_instance_data['Instance Price'] * usr_app_ds_instance_data['Instance Count']
+                        ) / 3.6e6  # 1 hour in milliseconds
                         if 'wallclock_time' in usr_app_ds_instance_data:
                             wall_clock_time_l.append(float(usr_app_ds_instance_data['wallclock_time']))
+                            wall_clock_cost_l.append(float(usr_app_ds_instance_data['wallclock_time'])*instance_cost)
                         PIs_sum_l.append(float(usr_app_ds_instance_data['Real']['sum']))
+                        PIs_cost_l.append(float(usr_app_ds_instance_data['Real']['sum']) * instance_cost)
                         for pm in proxy_metrics:
                             proxy_metrics_l[pm].append(float(usr_app_ds_instance_data[pm]['mean']))
+                            proxy_metrics_l[f'{pm}-Cost'].append(
+                                float(usr_app_ds_instance_data[pm]['mean'] * instance_cost)
+                            )
 
                         rank0_samples = usr_app_ds_instance_data['PI Samples rank0']
                         if rank0_min_samples == '':
@@ -512,33 +523,35 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                         row_data['max wallclock_time'] = ''
                     row_data['min PIs sum'] = min(PIs_sum_l)
                     row_data['max PIs sum'] = max(PIs_sum_l)
+                    row_data['min PIs cost'] = min(PIs_cost_l)
+                    row_data['max PIs cost'] = max(PIs_cost_l)
 
-                    for pm in proxy_metrics:
+                    for pm in proxy_metrics_l:
                         # Compute correlation between pm and All PIs.
-                        if len(PIs_sum_l) >= 2:
-                            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
-                                proxy_metrics_l[pm], PIs_sum_l
-                            )
-                            row_data[f'{pm} vs All PIs - R2'] = r_value
-                            row_data[f'{pm} vs All PIs - Intercept'] = intercept
-                            row_data[f'{pm} vs All PIs - Slope'] = slope
-                            row_data[f'{pm} vs All PIs - Intercept/min PIs sum'] = intercept / row_data['min PIs sum']
-
-                            correlation_matrix = np.corrcoef(proxy_metrics_l[pm], PIs_sum_l)
-                            correlation_xy = correlation_matrix[0, 1]
-                            r_squared = correlation_xy**2
-                            row_data[f'{pm} vs All PIs - R2*'] = r_squared
-
-                        else:
+                        if len(PIs_sum_l) < 2:
                             row_data[f'{pm} vs All PIs - R2'] = ''
                             row_data[f'{pm} vs All PIs - R2*'] = ''
                             row_data[f'{pm} vs All PIs - Intercept'] = ''
                             row_data[f'{pm} vs All PIs - Slope'] = ''
                             row_data[f'{pm} vs All PIs - Intercept/min PIs sum'] = ''
                             row_data['warnings'] = f'(number of samples - {len(PIs_sum_l)} - too small for statistics)'
+                            continue
+                        PIs_reference_l = PIs_cost_l if pm.endswith('-Cost') else PIs_sum_l
+                        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
+                            proxy_metrics_l[pm], PIs_reference_l
+                        )
+                        row_data[f'{pm} vs All PIs - R2'] = r_value
+                        row_data[f'{pm} vs All PIs - Intercept'] = intercept
+                        row_data[f'{pm} vs All PIs - Slope'] = slope
+                        row_data[f'{pm} vs All PIs - Intercept/min PIs sum'] = intercept / row_data['min PIs sum']
+
+                        correlation_matrix = np.corrcoef(proxy_metrics_l[pm], PIs_reference_l)
+                        correlation_xy = correlation_matrix[0, 1]
+                        r_squared = correlation_xy**2
+                        row_data[f'{pm} vs All PIs - R2*'] = r_squared
 
                     row_data['Wallclock vs All PIs - chartname'] = ''
-                    for pm in proxy_metrics:
+                    for pm in proxy_metrics_l:
                         row_data[f'{pm} vs All PIs - chartname'] = ''
                     if charts_output_directory:
                         # Plot chart
@@ -559,15 +572,31 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             )
                             row_data['Wallclock vs All PIs - chartname'] = filename
 
+                            filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi-cost.pdf')
+                            plot_correlation(
+                                X_values=PIs_cost_l,
+                                X_label='Sum of PIs cost (USD)',
+                                Y_values=wall_clock_cost_l,
+                                Y_label='Total execution cost (USD)',
+                                user=user,
+                                app_name=app,
+                                ds=ds,
+                                instance_names=instance_names_l,
+                                plot_ideal=True,
+                                filename=filename,
+                            )
+                            row_data['Wallclock cost vs All PIs cost - chartname'] = filename
+
                         if len(PIs_sum_l) >= 3:
-                            for pm in proxy_metrics:
+                            for pm in proxy_metrics_l:
                                 filename_suffix = pm.lower().replace(' ', '_') + '_vs_sum_pi'
                                 filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
+                                unit_s = 'USD' if pm.endswith('-Cost') else 'ms'
                                 plot_correlation(
                                     X_values=PIs_sum_l,
-                                    X_label='Sum of PIs (ms)',
+                                    X_label=f'Sum of PIs ({unit_s})',
                                     Y_values=proxy_metrics_l[pm],
-                                    Y_label=pm + ' (ms)',
+                                    Y_label=f'{pm} ({unit_s})',
                                     user=user,
                                     app_name=app,
                                     ds=ds,
@@ -619,9 +648,8 @@ if __name__ == '__main__':
         error(f'{args.input_dir} is an invalid file!')
 
     verbose(f'Loading data from  {args.input_file}', 1)
-    file = open(args.input_file, 'rb')
-    data = pickle.load(file)
-    file.close()
+    with open(args.input_file, 'rb') as file:
+        data = pickle.load(file)
 
     if args.dump_data:
         print_object(data, '.')

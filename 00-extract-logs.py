@@ -86,7 +86,6 @@ def parse_instance_dataframe(
     # Extract the wallclock time (abs_time)
     if ABS_time_col in df.columns:
         df[ABS_time_col] = df[ABS_time_col] * time_conversion_factor
-        # Jeferson, não deveria ser o máximo de cada rank?
         wallclock_time = df.groupby('rank')[ABS_time_col].max().max()
         data['wallclock_time'] = float(wallclock_time)
     elif extra_info and 'Time in seconds' in extra_info:
