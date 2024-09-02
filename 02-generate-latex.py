@@ -34,8 +34,12 @@ def load_and_clean_result(input_file):
     # Clean-up dataframe file
     df = pd.read_csv(input_file)
 
-    remain_columns = ['app_alias', '# instances', 'min wallclock_time', 'max wallclock_time']
+    remain_columns = ['app_alias', '# instances', 'min time', 'max time']
     remain_columns += [column for column in df.keys() if column.endswith(' - R2')]
+
+    # df[df['min wallclock_time'].isnull()]
+    df['min time'] = df['min wallclock_time'].fillna(df['min PIs sum'])
+    df['max time'] = df['max wallclock_time'].fillna(df['max PIs sum'])
 
     # Filter experiments with lass then 3 configurations
     df = df[df['# instances'] > 2]
