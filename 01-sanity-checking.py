@@ -339,12 +339,15 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     y_at_xmin = poly(data_xlim[0])
     y_at_xmax = poly(data_xlim[1])
 
+    initial_point = min(data_xlim[0], data_ylim[0])
+    final_point = max(data_xlim[1], data_ylim[1])
+
     # Plot ideal trendline (x=y)
     trend_lines = dict()
     if plot_ideal:
         (trend_lines['Ideal'],) = plt.plot(
-            [data_xlim[0], data_xlim[1]],
-            [data_ylim[0], data_ylim[1]],
+            [initial_point, final_point],
+            [initial_point, final_point],
             color='#aaaaaa',
             linestyle='-',
             linewidth=1,
@@ -559,10 +562,10 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                         if len(wall_clock_time_l) >= 3:
                             filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi.pdf')
                             plot_correlation(
-                                X_values=PIs_sum_l,
-                                X_label='Sum of PIs (ms)',
-                                Y_values=wall_clock_time_l,
-                                Y_label='Total execution time (ms)',
+                                Y_values=PIs_sum_l,
+                                Y_label='Sum of PIs (ms)',
+                                X_values=wall_clock_time_l,
+                                X_label='Total execution time (ms)',
                                 user=user,
                                 app_name=app,
                                 ds=ds,
@@ -574,10 +577,10 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
 
                             filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi-cost.pdf')
                             plot_correlation(
-                                X_values=PIs_cost_l,
-                                X_label='Sum of PIs cost (USD)',
-                                Y_values=wall_clock_cost_l,
-                                Y_label='Total execution cost (USD)',
+                                Y_values=PIs_cost_l,
+                                Y_label='Sum of PIs cost (USD)',
+                                X_values=wall_clock_cost_l,
+                                X_label='Total execution cost (USD)',
                                 user=user,
                                 app_name=app,
                                 ds=ds,
