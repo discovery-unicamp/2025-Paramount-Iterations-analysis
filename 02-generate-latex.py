@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import re
 from datetime import date
 
 import pandas as pd
@@ -63,12 +64,14 @@ def cleanup_latex(dataframe):
     latex_table = dataframe.to_latex(index=False, float_format=correlation_formatter)
 
     lines = latex_table.splitlines()
-    headers = lines[2]
+    # headers = lines[2]
+    headers = r'Application &  cfgs &  min time(s) &  max time(s) & \multicolumn{2}{c|}{Second PI} &  & \multicolumn{2}{c|}{From 2 to 5} &  & \multicolumn{2}{c|}{From 2 to 10} &  & \multicolumn{2}{c|}{0.5s} &  & \multicolumn{2}{c|}{0.5s-first}  \\&'
     content_lines = lines[4:-2]
     content_lines.sort()
 
     # Split the lines into cells
     split_lines = [line.split('&') for line in [headers] + content_lines]
+    # split_lines = [line.split('&') for line in content_lines]
     # Trim whitespace from cells
     split_lines = [[cell.strip() for cell in line] for line in split_lines]
     # Determine the maximum width for each column
@@ -78,6 +81,8 @@ def cleanup_latex(dataframe):
     for line in split_lines:
         aligned_line = ' & '.join(cell.ljust(max_width) for cell, max_width in zip(line, max_widths)) + ' \\hline'
         aligned_lines.append(aligned_line)
+    aligned_lines[0] = re.sub(r'&\s+&', lambda m: f' {m.group(0)[1:]}', aligned_lines[0])
+
     # Join the aligned lines
     return '\n'.join(aligned_lines)
 
