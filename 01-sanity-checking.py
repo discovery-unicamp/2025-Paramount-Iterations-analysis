@@ -12,7 +12,7 @@ import numpy as np
 import scipy
 
 import app_group
-from app_aliases import app_aliases
+from experim_aliases import EXPERIM_ALIASES
 from colors import COLORS
 
 # =============================================================================================
@@ -288,7 +288,7 @@ def generate_csv_analysis_per_instance(data):
 
 
 def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, instance_names, plot_ideal, filename):
-    app_alias = app_aliases[app_name]
+    app_alias = EXPERIM_ALIASES[app_name]
 
     if len(instance_names) < 3:
         print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_alias}/{app_name}')
