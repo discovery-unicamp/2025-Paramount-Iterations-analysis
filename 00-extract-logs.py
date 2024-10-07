@@ -101,18 +101,20 @@ def parse_instance_dataframe(
     verbose(f'Instance Name:  {inst_name}', 5)
     verbose(f'Instance Count: {inst_count}', 5)
 
+    data['Total PI Samples'] = samples_total = len(df)
+    verbose(f'Total PI Samples registered  : {samples_total}', 5)
 
-    data['Total PI Samples'] = len(df)
     if 'rank' in df:
         df = df[df['rank'] == 0]
     elif extra_info and 'Total processes' in extra_info:
+        # TODO: Jeff: Fazer algo parecido com o da selecao no pre-processamento(raw_read_rank_0)??
         num_processes = int(extra_info['Total processes'])
-        df = df[df.index % num_processes == int(num_processes/2)]  # Assuming that the PIs are evenly distributed
-    data['PI Samples rank0'] = len(df)
+        # df = df[df.index % num_processes == int(num_processes/2)]  # Assuming that the PIs are evenly distributed
+        df = pd.DataFrame({'time': df.groupby(df.index // num_processes)['time'].mean()}) # Assuming that Rank0 is the mean of every X iterations
 
-    verbose(f'PI Samples registerd in rank0: {data["PI Samples rank0"]}', 5)
-    verbose(f'Total PI Samples registered  : {data["Total PI Samples"]}', 5)
-    verbose(f'Total / rank0 PI Samples     : {data["Total PI Samples"]/data["PI Samples rank0"]}', 5)
+    data['PI Samples rank0'] = samples_rank0 = len(df)
+    verbose(f'PI Samples registerd in rank0: {samples_rank0}', 5)
+    verbose(f'Total / rank0 PI Samples     : {samples_total/samples_rank0}', 5)
 
     df = df[PI_time_col].reset_index(drop=True)
     # Extract all the proxy information from the dataframe
@@ -181,6 +183,8 @@ def parse_user_data(user, parsed_data, csv_files):
             if df.size == 0:
                 warning(f'Could not extract information from CSV file: {instance_csv_file}')
                 continue
+            if len(df.keys()) == 1:
+                df.columns = ['time']
 
             # FIX results from Jeferson's experiments: Convert time from sec to msec
             time_conversion_factor = 1000  # Convert sec to msec
@@ -266,6 +270,7 @@ if __name__ == '__main__':
 
     # CSV files
     csv_files = glob.glob(root_data_dir + '/*/*/*/*.csv', recursive=True)
+    # csv_files += [item for item in csv_files2 if 'Thais-ECP' in item]  # "prediction_data2"
 
     # User names
     usernames = list(set(map(lambda x: x.split('/', 4)[-3], csv_files)))
@@ -278,6 +283,5 @@ if __name__ == '__main__':
         # break
 
     verbose(f'Storing results at {args.output_file}', 1)
-    file = open(args.output_file, 'wb')
-    pickle.dump(parsed_data, file)
-    file.close()
+    with open(args.output_file, 'wb') as file:
+        pickle.dump(parsed_data, file)

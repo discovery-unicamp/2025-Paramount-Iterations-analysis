@@ -31,12 +31,34 @@ def verbose(msg, level=0):
 # ====================================================
 
 
+def get_app_behavior(group, app):
+    if app == 'TC-1':
+        return 'Unmatch'
+    if 'amg' in app or app == '3Dadvect' or group == 'NAMD':
+        return 'Phases'
+    if group == 'NPB-EP' or 'ember' in app:
+        return 'Fuzzy'
+    return 'Expected'
+
+
 def load_and_clean_result(input_file):
     # Clean-up dataframe file
     df = pd.read_csv(input_file)
 
-    remain_columns = ['app_alias', '# instances', 'min time', 'max time']
-    remain_columns += [column for column in df.keys() if column.endswith(' - R2')]
+    remain_columns = [
+        'app_alias',
+        'app_behavior',
+        '# instances',
+        'min time',
+        'max time',
+        'Second PI vs All PIs - R2',
+        'Second PI-Cost vs All PIs - R2',
+        'From 2 to 5 vs All PIs - R2',
+        'From 2 to 5-Cost vs All PIs - R2',
+        'From 2 to 10 vs All PIs - R2',
+        'From 2 to 10-Cost vs All PIs - R2',
+    ]
+    # remain_columns += [column for column in df.keys() if column.endswith(' - R2')]
 
     # df[df['min wallclock_time'].isnull()]
     df['min time'] = df['min wallclock_time'].fillna(df['min PIs sum'])
@@ -48,7 +70,9 @@ def load_and_clean_result(input_file):
     df = df[df['Rank 0 min/max PI sample ratio'] > 0.7]
 
     df['app_alias'] = df['app'].apply(lambda app: f'\\app{{{EXPERIM_ALIASES[app].replace("_", "\\_")}}}')
-
+    df['app_behavior'] = df.apply(lambda x: get_app_behavior(x.group, x.app), axis=1)
+    print(f'Total lines: {len(df.index)}')
+    print(df['app_behavior'].value_counts())
     return df[[*remain_columns]]
 
 
@@ -65,7 +89,7 @@ def cleanup_latex(dataframe):
 
     lines = latex_table.splitlines()
     # headers = lines[2]
-    headers = r'Application &  cfgs &  min time(s) &  max time(s) & \multicolumn{2}{c|}{Second PI} &  & \multicolumn{2}{c|}{From 2 to 5} &  & \multicolumn{2}{c|}{From 2 to 10} &  & \multicolumn{2}{c|}{0.5s} &  & \multicolumn{2}{c|}{0.5s-first}  \\&'
+    headers = r'Application & behavior &  cfgs &  min time(s) &  max time(s) & \multicolumn{2}{c|}{Second PI} &  & \multicolumn{2}{c|}{From 2 to 5} &  & \multicolumn{2}{c|}{From 2 to 10} \\&'
     content_lines = lines[4:-2]
     content_lines.sort()
 

@@ -6,14 +6,15 @@
 import argparse
 import os
 import pickle
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 
 import app_group
-from experim_aliases import EXPERIM_ALIASES
 from colors import COLORS
+from experim_aliases import EXPERIM_ALIASES
 
 # =============================================================================================
 # Functions to dump data
@@ -53,7 +54,7 @@ def print_object(o, prefix=''):
 # ====================================================
 # Utility functions
 def error(msg):
-    print('ERROR:', msg)
+    print('ERROR:', msg, file=sys.stderr)
     exit(1)
 
 
@@ -62,9 +63,9 @@ W_show_csv_filename = False
 
 def warning(msg, csv_filename=None):
     if W_show_csv_filename and csv_filename:
-        print('WARNING:', msg, f'({csv_filename})')
+        print('WARNING:', msg, f'({csv_filename})', file=sys.stderr)
     else:
-        print('WARNING:', msg)
+        print('WARNING:', msg, file=sys.stderr)
 
 
 verbosity_level = 0
@@ -72,7 +73,7 @@ verbosity_level = 0
 
 def verbose(msg, level=0):
     if level <= verbosity_level:
-        print(msg)
+        print(msg, file=sys.stderr)
 
 
 # def rounded_linspace(start, end, num_points):
@@ -408,8 +409,8 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     return filename
 
 
-def generate_csv_analysis_per_application(data, charts_output_directory):
-    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10', '0.5_s', '0.5_s-first']
+def generate_csv_analysis_per_application(data, charts_output_directory, costs_subdir=''):
+    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']  #, '0.5_s', '0.5_s-first']
     proxy_metrics_2 = ['R2*', 'R2', 'Intercept', 'Slope', 'Intercept/min PIs sum', 'chartname']
     csv_fields = (
         [
@@ -428,7 +429,12 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
             'Rank 0 min/max PI sample ratio',
         ]
         + ['Wallclock vs All PIs - chartname']
-        + [f'{pm_type} vs All PIs - {pm2}' for pm in proxy_metrics for pm2 in proxy_metrics_2 for pm_type in (pm, f'{pm}-Cost')]
+        + [
+            f'{pm_type} vs All PIs - {pm2}'
+            for pm in proxy_metrics
+            for pm2 in proxy_metrics_2
+            for pm_type in (pm, f'{pm}-Cost')
+        ]
         + ['warnings']
     )
 
@@ -493,7 +499,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                         ) / 3.6e6  # 1 hour in milliseconds
                         if 'wallclock_time' in usr_app_ds_instance_data:
                             wall_clock_time_l.append(float(usr_app_ds_instance_data['wallclock_time']))
-                            wall_clock_cost_l.append(float(usr_app_ds_instance_data['wallclock_time'])*instance_cost)
+                            wall_clock_cost_l.append(float(usr_app_ds_instance_data['wallclock_time']) * instance_cost)
                         PIs_sum_l.append(float(usr_app_ds_instance_data['Real']['sum']))
                         PIs_cost_l.append(float(usr_app_ds_instance_data['Real']['sum']) * instance_cost)
                         for pm in proxy_metrics:
@@ -575,7 +581,9 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             )
                             row_data['Wallclock vs All PIs - chartname'] = filename
 
-                            filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi-cost.pdf')
+                            filename = os.path.join(
+                                charts_output_directory, costs_subdir, f'{basename}-wallclock_vs_sum_pi-cost.pdf'
+                            )
                             plot_correlation(
                                 Y_values=PIs_cost_l,
                                 Y_label='Sum of PIs cost (USD)',
@@ -594,7 +602,14 @@ def generate_csv_analysis_per_application(data, charts_output_directory):
                             for pm in proxy_metrics_l:
                                 filename_suffix = pm.lower().replace(' ', '_') + '_vs_sum_pi'
                                 filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
-                                unit_s = 'USD' if pm.endswith('-Cost') else 'ms'
+                                # unit_s = 'USD' if pm.endswith('-Cost') else 'ms'
+                                unit_s = 'ms'
+                                if pm.endswith('-Cost'):
+                                    continue
+                                    unit_s = 'USD'
+                                    filename = os.path.join(
+                                        charts_output_directory, costs_subdir, f'{basename}-{filename_suffix}.pdf'
+                                    )
                                 plot_correlation(
                                     X_values=PIs_sum_l,
                                     X_label=f'Sum of PIs ({unit_s})',
@@ -664,6 +679,10 @@ if __name__ == '__main__':
         generate_csv_analysis_per_instance(data)
 
     if args.analysis_per_application:
-        generate_csv_analysis_per_application(data, args.application_charts_dir)
+        costs_subdir = 'costs'
+        if charts_dir := args.application_charts_dir:
+            os.makedirs(os.path.join(charts_dir, costs_subdir), exist_ok=True)
+            os.makedirs(charts_dir, exist_ok=True)
+        generate_csv_analysis_per_application(data, args.application_charts_dir, costs_subdir)
 
 # ====================================================
