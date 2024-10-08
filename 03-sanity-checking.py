@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-# Description: This script is used to parse and extract log information from the CSV files.
-# The parsed information is organized in a dictionary and stored on the output file.
+# Description: This script reads the pickle pre-processed data derive CSVs and charts with them
 
 import argparse
 import os
 import pickle
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -54,7 +52,7 @@ def print_object(o, prefix=''):
 # ====================================================
 # Utility functions
 def error(msg):
-    print('ERROR:', msg, file=sys.stderr)
+    print('ERROR:', msg)
     exit(1)
 
 
@@ -63,9 +61,9 @@ W_show_csv_filename = False
 
 def warning(msg, csv_filename=None):
     if W_show_csv_filename and csv_filename:
-        print('WARNING:', msg, f'({csv_filename})', file=sys.stderr)
+        print('WARNING:', msg, f'({csv_filename})')
     else:
-        print('WARNING:', msg, file=sys.stderr)
+        print('WARNING:', msg)
 
 
 verbosity_level = 0
@@ -73,7 +71,7 @@ verbosity_level = 0
 
 def verbose(msg, level=0):
     if level <= verbosity_level:
-        print(msg, file=sys.stderr)
+        print(msg)
 
 
 # def rounded_linspace(start, end, num_points):

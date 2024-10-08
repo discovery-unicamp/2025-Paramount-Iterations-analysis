@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+# Description: This script reads the processed CSV files and generates the histogram chart and a LaTeX output table
+
 import argparse
 import re
 from datetime import date
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from experim_aliases import EXPERIM_ALIASES
@@ -20,7 +24,7 @@ def warning(msg, csv_filename=None):
     print('[WARNING] ', msg)
 
 
-verbosity_level = 3
+verbosity_level = 0
 
 
 def verbose(msg, level=0):
@@ -111,21 +115,68 @@ def cleanup_latex(dataframe):
     return '\n'.join(aligned_lines)
 
 
-def generate_latex(input_file):
+def generate_latex(df, output_sufix):
     # Save the result
-    output_path = f'latex_table-{date.today().isoformat()}'
+    output_path = f'latex_table-{output_sufix}'
     # df.to_csv(f'{output_path}.csv', float_format='%.2f', index=False)  # float_format='%g'
     with open(f'{output_path}.tex', 'w') as f:
-        f.write(cleanup_latex(load_and_clean_result(input_file)))
-    print(f'Generate from csv to tex: {output_path}.tex')
+        f.write(cleanup_latex(df))
+    verbose(f'Generate from csv to tex: {output_path}.tex', 1)
+
+
+def generate_histograms(df, output_sufix):
+    bins_size = 100
+    correlations = ['Second PI', 'From 2 to 5', 'From 2 to 10']
+    for metric in [('Time', ''), ('Cost', '-Cost')]:
+        count = 0
+        fig, axs = plt.subplots(len(correlations), figsize=(9, len(correlations) * 2 - 1))
+        fig.subplots_adjust(
+            top=0.99, bottom=0.05, left=0.1, right=0.95, hspace=0.5
+        )  # Adjust vertical space between subplots
+        # Calculate bar width based on figure width
+        bar_width = fig.get_size_inches()[0] / (2 * bins_size)
+
+        max_value = 0
+        for count, correlation in enumerate(correlations):
+            proxy = f'{correlation}{metric[1]} vs All PIs - R2'
+            # Set x and y limits
+            is_positive = df[proxy].min() >= 0
+            axs[count].set_xlim(left=0 if is_positive else -1, right=1)
+
+            # Calculate histogram from the data
+            hist, bins = np.histogram(df[proxy], bins=bins_size)
+            bin_centers = (bins[:-1] + bins[1:]) / 2
+
+            max_value = max(max_value, hist.max())
+
+            # Line histogram
+            axs[count].bar(bin_centers, hist, width=bar_width if is_positive else bar_width / 2)
+            title = f'{proxy.split("_", 3)[-1]} histogram'
+            axs[count].text(
+                0.5, 0.95, title, transform=axs[count].transAxes, ha='center', va='top', fontsize=14, fontweight='bold'
+            )
+
+        for ax in axs:
+            ax.set_ylim(top=max_value, bottom=-10)
+
+        # Add x-label and y-label for all subplots
+        fig.text(0.5, -0.065, f'Pearson correlation of {metric[0]}', ha='center', fontsize=16)
+        fig.text(0.01, 0.5, 'Frequency', va='center', rotation='vertical', fontsize=16)
+        filename = f'histogram_{metric[0]}-{output_sufix}.pdf'
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close()
+        verbose(f'Histogram saved: {filename}', 1)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Adding optional argument
-    parser.add_argument('-i', '--input_file', help='Input pickle file (.csv) ')
     parser.add_argument('-v', '--verbosity', help='Verbosity level: 0 (default), 1, 2, 3, 4')
+    parser.add_argument('-i', '--input_file', help='Input CSV file')
+    parser.add_argument('-o', '--output_sufix', help='Output file sufix: default is the current day', default=date.today().isoformat())
+    parser.add_argument('--generate_histogram', help='Generate histograms', action='store_true', default=False)
+    parser.add_argument('--generate_latex', help='Generate a LaTeX file', action='store_true', default=True)
 
     # Read arguments from command line
     args = parser.parse_args()
@@ -136,4 +187,10 @@ if __name__ == '__main__':
     if not args.input_file:
         error('Input file expected but not provided (-i)')
 
-    generate_latex(args.input_file)
+    df = load_and_clean_result(args.input_file)
+
+    if args.generate_latex:
+        generate_latex(df, args.output_sufix)
+
+    if args.generate_histogram:
+        generate_histograms(df, args.output_sufix)

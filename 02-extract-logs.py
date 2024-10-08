@@ -270,7 +270,6 @@ if __name__ == '__main__':
 
     # CSV files
     csv_files = glob.glob(root_data_dir + '/*/*/*/*.csv', recursive=True)
-    # csv_files += [item for item in csv_files2 if 'Thais-ECP' in item]  # "prediction_data2"
 
     # User names
     usernames = list(set(map(lambda x: x.split('/', 4)[-3], csv_files)))
