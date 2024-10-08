@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from dask.distributed import Client
-from scripts_2021.colors import COLORS
+from colors import COLORS
 
 NUM_WORKERS = 3
 MEMORY_LIMIT = f'{NUM_WORKERS}GB'
