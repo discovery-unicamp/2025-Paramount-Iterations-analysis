@@ -15,6 +15,26 @@ import pandas as pd
 from utils.instance_aliases import INSTANCE_ALIASES
 from utils.instance_prices import INSTANCE_PRICES
 
+
+# ====================================================
+# Utility functions
+def error(msg):
+    print('ERROR:', msg)
+    exit(1)
+
+
+def warning(msg):
+    print('WARNING:', msg)
+
+
+verbosity_level = 0
+
+
+def verbose(msg, level=0):
+    if level <= verbosity_level:
+        print('  ' * (level - 1), msg)
+
+
 # =============================================================================================
 # Functions to extract data and/or summarize the dataframes built from the CSV files.
 # =============================================================================================
@@ -89,7 +109,7 @@ def parse_instance_dataframe(
         wallclock_time = df.groupby('rank')[ABS_time_col].max().max()
         data['wallclock_time'] = float(wallclock_time)
     elif extra_info and 'Time in seconds' in extra_info:
-        data['wallclock_time'] = float(extra_info['Time in seconds']) * 1000   # Convert sec to msec
+        data['wallclock_time'] = float(extra_info['Time in seconds']) * 1000  # Convert sec to msec
 
     inst_name, inst_count = instance_name.split('-')
     inst_price = INSTANCE_PRICES[inst_name]
@@ -110,7 +130,9 @@ def parse_instance_dataframe(
         # TODO: Jeff: Fazer algo parecido com o da selecao no pre-processamento(raw_read_rank_0)??
         num_processes = int(extra_info['Total processes'])
         # df = df[df.index % num_processes == int(num_processes/2)]  # Assuming that the PIs are evenly distributed
-        df = pd.DataFrame({'time': df.groupby(df.index // num_processes)['time'].mean()}) # Assuming that Rank0 is the mean of every X iterations
+        df = pd.DataFrame(
+            {'time': df.groupby(df.index // num_processes)['time'].mean()}
+        )  # Assuming that Rank0 is the mean of every X iterations
 
     data['PI Samples rank0'] = samples_rank0 = len(df)
     verbose(f'PI Samples registerd in rank0: {samples_rank0}', 5)
@@ -155,7 +177,9 @@ def parse_user_data(user, parsed_data, csv_files):
         user_app_csv_files = list(filter(lambda x: app_name in x, user_csv_files))
 
         for instance_csv_file in user_app_csv_files:
-            dataset_name = instance_csv_file.split('/')[-2]
+            dataset_name = 'generic'
+            if '-' in app_name:
+                dataset_name = f'group-{app_name.split('-')[-1]}'
 
             if dataset_name not in parsed_data['Users'][user]['apps'][app_name]:
                 parsed_data['Users'][user]['apps'][app_name][dataset_name] = {}
@@ -203,7 +227,6 @@ def parse_user_data(user, parsed_data, csv_files):
                 with open(extra_info_file, 'r') as file:
                     extra_info = json.load(file)
 
-
             parse_instance_dataframe(
                 instance_name,
                 df,
@@ -217,27 +240,6 @@ def parse_user_data(user, parsed_data, csv_files):
 
 # =============================================================================================
 
-
-# ====================================================
-# Utility functions
-def error(msg):
-    print('ERROR:', msg)
-    exit(1)
-
-
-def warning(msg):
-    print('WARNING:', msg)
-
-
-verbosity_level = 0
-
-
-def verbose(msg, level=0):
-    if level <= verbosity_level:
-        print('  ' * (level - 1), msg)
-
-
-# ====================================================
 
 if __name__ == '__main__':
     # Initialize parser

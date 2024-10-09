@@ -108,6 +108,16 @@ def verbose(msg, level=0):
 #     return rounded_values
 
 
+def get_app_group(app):
+    if app in app_group:
+        return app_group[app]
+    if '-' in app:
+        app2 = '-'.join(app.split('-')[:-1])
+        if app2 in app_group:
+            return app_group[app2]
+    error(f'Group for app {app} not found')
+    return ''
+
 # ====================================================
 
 
@@ -160,7 +170,7 @@ def wallclock_time_sanity_check_by_app(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group[app]
+            group = get_app_group(app)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -228,7 +238,7 @@ def generate_csv_analysis_per_instance(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group[app]
+            group = get_app_group(app)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -450,7 +460,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group[app]
+            group = get_app_group(app)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
