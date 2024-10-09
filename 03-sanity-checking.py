@@ -11,8 +11,8 @@ import numpy as np
 import scipy
 
 import app_group
-from colors import COLORS
-from experim_aliases import EXPERIM_ALIASES
+from utils.colors import COLORS
+from utils.experim_aliases import EXPERIM_ALIASES
 
 # =============================================================================================
 # Functions to dump data

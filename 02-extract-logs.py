@@ -12,8 +12,8 @@ import pickle
 import numpy as np
 import pandas as pd
 
-from instance_aliases import INSTANCE_ALIASES
-from instance_prices import INSTANCE_PRICES
+from utils.instance_aliases import INSTANCE_ALIASES
+from utils.instance_prices import INSTANCE_PRICES
 
 # =============================================================================================
 # Functions to extract data and/or summarize the dataframes built from the CSV files.

@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common_charts import MAX_PIS, plot_raw_chart, plot_relative_chart
-from experim_aliases import EXPERIM_ALIASES
-from instance_aliases import INSTANCE_ALIASES
-from instance_prices import INSTANCE_PRICES
+from utils.common_charts import MAX_PIS, plot_raw_chart, plot_relative_chart
+from utils.experim_aliases import EXPERIM_ALIASES
+from utils.instance_aliases import INSTANCE_ALIASES
+from utils.instance_prices import INSTANCE_PRICES
 
 mpl.rcParams['agg.path.chunksize'] = 100000
 

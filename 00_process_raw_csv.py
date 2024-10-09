@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common_charts import plot_raw_chart, plot_relative_chart
-from experim_aliases import EXPERIM_ALIASES
+from utils.common_charts import plot_raw_chart, plot_relative_chart
+from utils.experim_aliases import EXPERIM_ALIASES
 
 mpl.rcParams['agg.path.chunksize'] = 10000
 
