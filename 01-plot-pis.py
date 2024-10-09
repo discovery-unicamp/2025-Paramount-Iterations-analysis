@@ -6,6 +6,7 @@ import argparse
 import glob
 import os
 import re
+from pathlib import Path
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -157,11 +158,11 @@ def plot_charts(pdfs_results_dir, user, app_name, instance_data, ignore, window,
 
 def process_user_data(pdfs_results_dir, results_data_location, user, ignore, window, max_pi, filter_app_list=[]):
     user_exps = list(filter(lambda x: user in x, results_data_location))
-    apps_user = list(set(map(lambda x: x.split('/')[2], user_exps)))
+    apps_user = list(set(map(lambda x: Path(x).parts[-2], user_exps)))
     for app in sorted(apps_user):
         if filter_app_list and not any([remove in app.lower() for remove in filter_app_list]):
             continue
-        print(f'Processing {app}')
+        verbose(f'Processing {app}', 1)
         instance_data = {}
         it_counts = set()
         instances = list(filter(lambda x: app in x, user_exps))
@@ -190,14 +191,15 @@ def process_user_data(pdfs_results_dir, results_data_location, user, ignore, win
         )
         current_max_pi = max_pi
         if len(it_counts) > 1:
-            # Divergent number of iterations
+            warning('Divergent number of iterations')
             it_counts = sorted(list(it_counts))
             # Geralmente retirar o mais baixo e suficiente
             sorted_instance_data = dict(
                 (key, df) for key, df in sorted_instance_data.items() if len(df.index) >= it_counts[1]
             )
             if len(it_counts) > 2:
-                # Se nao ficaram todos com o mesmo numero de PIs, limitamos para o menor
+                # If all the executions still have a divergent number of iteratios, we limit the maximun number of PIs.
+                warning(f'Limiting the experiments to {it_counts[1]} iterations')
                 current_max_pi = min(current_max_pi, it_counts[1])
         try:
             plot_charts(pdfs_results_dir, user, app, sorted_instance_data, ignore, window, current_max_pi)
@@ -213,10 +215,12 @@ if __name__ == '__main__':
     # Adding optional argument
     parser.add_argument('-i', '--input_dir', help='Input directory')
     parser.add_argument('-o', '--output', help='Output directory')
-    parser.add_argument('-v', '--verbosity', help='Verbosity level: 0 (default), 1, 2, 3, 4')
-    parser.add_argument('-s', '--ignore', help='Number of iterations to be ignored')
-    parser.add_argument('-w', '--window', help='Number of iterations to be groupoed (smooth)', default=1)
-    parser.add_argument('-m', '--max_pi', help='Maximun number of iterations to be considered', default=MAX_PIS)
+    parser.add_argument('-v', '--verbosity', help='Verbosity level: 0 (default), 1, 2, 3, 4', type=int)
+    parser.add_argument('-s', '--ignore', help='Number of iterations to be ignored', default=0, type=int)
+    parser.add_argument('-w', '--window', help='Number of iterations to be groupoed (smooth)', default=1, type=int)
+    parser.add_argument(
+        '-m', '--max_pi', help='Maximun number of iterations to be considered', default=MAX_PIS, type=int
+    )
 
     # Read arguments from command line
     args = parser.parse_args()
@@ -224,22 +228,25 @@ if __name__ == '__main__':
     if args.verbosity:
         verbosity_level = int(args.verbosity)
 
-    if not args.input_file:
-        error('Input file expected but not provided (-i)')
+    if not args.input_dir:
+        error('Input dir expected but not provided (-i)')
 
-    if not os.path.exists(args.input_file):
+    if not os.path.exists(args.input_dir):
         error(f'{args.input_dir} is an invalid directory!')
+
+    if not args.output:
+        error('Output argument not suplied!')
 
     if not os.path.exists(args.output):
         warning(f'{args.output} directory not found, creating it!')
         os.makedirs(args.output)
 
-    results_data_location = glob.glob(f'{args.input_file}/**/*.csv', recursive=True)
-    usernames = list(set(map(lambda x: x.split('/', 4)[3], results_data_location)))
+    results_data_location = glob.glob(os.path.join(args.input_dir, '**', '*.csv'), recursive=True)
+    usernames = list(set(map(lambda x: Path(x).parts[-3], results_data_location)))
     usernames.sort()
 
     if not usernames:
-        error(f'Any valid result fount at {args.input_file}')
+        error(f'Any valid result fount at {args.input_dir}')
     verbose(f'Processing input files for users: {usernames}', level=1)
 
     verbose(

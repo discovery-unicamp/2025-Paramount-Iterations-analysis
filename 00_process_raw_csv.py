@@ -211,10 +211,9 @@ def select_right_experiment(csv_data_location, csv_output_dir, user):
         for instance_path in glob.glob(os.path.join(selected_path, bench_name, '*', '*', '')):
             path_parts = Path(instance_path).parts
             instance_name = path_parts[-1]
-            dataset_id = instance_name.split('-')[-1] if '-' in instance_name else 'generic'
-            app_name = path_parts[-2]
-            app_dataset = f'{app_name}-{dataset_id}'
-            output_path = os.path.join(csv_output_dir, bench_name, user, app_dataset)
+            dataset_id = instance_name.split('-')[-1]
+            app_name = f'{path_parts[-2]}-{dataset_id}' if '-' in instance_name else path_parts[-2]
+            output_path = os.path.join(csv_output_dir, bench_name, user, app_name)
             os.makedirs(output_path, exist_ok=True)
             multiple_execs = glob.glob(os.path.join(instance_path, '*', '*.csv'))
             dataframe, csv_path = seek_result(multiple_execs)
