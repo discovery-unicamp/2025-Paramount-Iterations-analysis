@@ -31,6 +31,15 @@ def verbose(msg, level=0):
     if level <= verbosity_level:
         print(msg)
 
+def get_app_equivalent(app, app_equivalent):
+    if app in app_equivalent:
+        return app_equivalent[app]
+    if '-' in app:
+        app2 = '-'.join(app.split('-')[:-1])
+        if app2 in app_equivalent:
+            return app_equivalent[app2]
+    error(f'Not found an quivalent for app {app}')
+    return ''
 
 # ====================================================
 
@@ -73,7 +82,7 @@ def load_and_clean_result(input_file):
 
     df = df[df['Rank 0 min/max PI sample ratio'] > 0.7]
 
-    df['app_alias'] = df['app'].apply(lambda app: f'\\app{{{EXPERIM_ALIASES[app].replace("_", "\\_")}}}')
+    df['app_alias'] = df['app'].apply(lambda app: f'\\app{{{get_app_equivalent(app, EXPERIM_ALIASES).replace("_", "\\_")}}}')
     df['app_behavior'] = df.apply(lambda x: get_app_behavior(x.group, x.app), axis=1)
     print(f'Total lines: {len(df.index)}')
     print(df['app_behavior'].value_counts())
@@ -162,7 +171,7 @@ def generate_histograms(df, output_sufix):
         # Add x-label and y-label for all subplots
         fig.text(0.5, -0.065, f'Pearson correlation of {metric[0]}', ha='center', fontsize=16)
         fig.text(0.01, 0.5, 'Frequency', va='center', rotation='vertical', fontsize=16)
-        filename = f'histogram_{metric[0]}-{output_sufix}.pdf'
+        filename = f'histogram_{metric[0].lower()}-{output_sufix}.pdf'
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
         verbose(f'Histogram saved: {filename}', 1)

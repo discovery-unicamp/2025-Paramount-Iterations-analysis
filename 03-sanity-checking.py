@@ -108,14 +108,14 @@ def verbose(msg, level=0):
 #     return rounded_values
 
 
-def get_app_group(app):
-    if app in app_group:
-        return app_group[app]
+def get_app_equivalent(app, app_equivalent):
+    if app in app_equivalent:
+        return app_equivalent[app]
     if '-' in app:
         app2 = '-'.join(app.split('-')[:-1])
-        if app2 in app_group:
-            return app_group[app2]
-    error(f'Group for app {app} not found')
+        if app2 in app_equivalent:
+            return app_equivalent[app2]
+    error(f'Not found an quivalent for app {app}')
     return ''
 
 # ====================================================
@@ -170,7 +170,7 @@ def wallclock_time_sanity_check_by_app(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = get_app_group(app)
+            group = get_app_equivalent(app, app_group)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -238,7 +238,7 @@ def generate_csv_analysis_per_instance(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = get_app_group(app)
+            group = get_app_equivalent(app, app_group)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -297,7 +297,7 @@ def generate_csv_analysis_per_instance(data):
 
 
 def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, instance_names, plot_ideal, filename):
-    app_alias = EXPERIM_ALIASES[app_name]
+    app_alias = get_app_equivalent(app_name, EXPERIM_ALIASES)
 
     if len(instance_names) < 3:
         print(f'WARNING!!! Not enough instances to plot a correlation {user}: {app_alias}/{app_name}')
@@ -460,7 +460,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = get_app_group(app)
+            group = get_app_equivalent(app, app_group)
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:

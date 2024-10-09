@@ -20,18 +20,21 @@ This repository contains:
 ./01-plot-pis.py --input_dir csv_selected_data --output charts_pi --verbosity 3
 ./02-extract-logs.py --input_dir csv_selected_data --output_file prediction_data.pkl --verbosity 3
 ./03-sanity-checking.py --input_file prediction_data.pkl --analysis_per_instance > prediction_data-analysis_per_instance.csv
-./03-sanity-checking.py --input_file prediction_data.pkl --analysis_per_application --application_charts_dir charts > prediction_data-analysis_per_application.csv
-./04-post-process.py --input_file prediction_data-analysis_per_application.csv --verbosity 3 --generate_histogram --generate_latex
-
-python 00-extract-logs.py -i prediction_data2 -o prediction_data2.pkl -v 2
-python 01-sanity-checking.py -i prediction_data2.pkl --analysis_per_instance > prediction_data2-analysis_per_instance.csv
-mkdir charts
-python 01-sanity-checking.py -i prediction_data2.pkl --analysis_per_application --application_charts_dir charts > prediction_data2-analysis_per_application.csv
+./03-sanity-checking.py --input_file prediction_data.pkl --analysis_per_application --application_charts_dir charts_analysis > prediction_data-analysis_per_application.csv
+./04-post-process.py --input_file prediction_data-analysis_per_application.csv --verbosity 3 --output_sufix prediction_data --generate_histogram --generate_latex
 ```
 
-## Output files
+## Output
 
-- `prediction_data2.pkl`: Pickle file with data to be analyzed (extracted from CSV files)
-- `prediction_data2-analysis_per_instance.csv`: Statistics about each instance, i.e., the execution of an application on a given cloud instance.
-- `prediction_data2-analysis_per_application.csv`: Statistics about the applications.
-- `charts/*.pdf`: set of PDF files with charts produced for each one of the applications analyzed.
+### Files
+- `prediction_data.pkl`: Pickle file with data to be analyzed (extracted from CSV files)
+- `prediction_data-analysis_per_instance.csv`: Statistics about each instance, i.e., the execution of an application on a given cloud instance.
+- `prediction_data-analysis_per_application.csv`: Statistics about the applications.
+- `latex_table-prediction_data.tex`: LaTeX version of input table.
+- `histogram_[time|cost]-prediction_data.pdf`: Histograms of Pearson Correlations for time and cost of metrics.
+
+### Directories
+- `csv_selected_data/**/*.csv`: 
+- `charts_mult-exec/*.pdf`: 
+- `charts_pi/*.pdf`: 
+- `charts_analysis/[costs/]*.pdf`: Set of PDF files with charts produced for each one of the applications analyzed.
