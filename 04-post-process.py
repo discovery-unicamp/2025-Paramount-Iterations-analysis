@@ -176,7 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input_file', help='Input CSV file')
     parser.add_argument('-o', '--output_sufix', help='Output file sufix: default is the current day', default=date.today().isoformat())
     parser.add_argument('--generate_histogram', help='Generate histograms', action='store_true', default=False)
-    parser.add_argument('--generate_latex', help='Generate a LaTeX file', action='store_true', default=True)
+    parser.add_argument('--generate_latex', help='Generate a LaTeX file', action='store_true', default=False)
 
     # Read arguments from command line
     args = parser.parse_args()
@@ -186,6 +186,9 @@ if __name__ == '__main__':
 
     if not args.input_file:
         error('Input file expected but not provided (-i)')
+
+    if not args.generate_latex and not args.generate_histogram:
+        error('Nothing to be done here!')
 
     df = load_and_clean_result(args.input_file)
 

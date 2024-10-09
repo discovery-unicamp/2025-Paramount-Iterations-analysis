@@ -43,7 +43,7 @@ verbosity_level = 0
 
 def verbose(msg, level=0):
     if level <= verbosity_level:
-        print(' ' * (level), msg)
+        print('  ' * (level - 1), msg)
 
 
 # ====================================================

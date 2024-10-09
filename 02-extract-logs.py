@@ -138,7 +138,7 @@ def parse_user_data(user, parsed_data, csv_files):
     user_csv_files = list(filter(lambda x: user in x, csv_files))
 
     # Parse User apps
-    user_apps = list(set(map(lambda x: x.split('/')[-4], user_csv_files)))
+    user_apps = list(set(map(lambda x: x.split('/')[-2], user_csv_files)))
     user_apps.sort()
 
     parsed_data['Users'][user]['apps'] = {}
@@ -150,8 +150,6 @@ def parse_user_data(user, parsed_data, csv_files):
             warning(f'WARNING: App {app_name} already parsed for user {user} -- Skipping it!!!')
             continue
         parsed_data['Users'][user]['apps'][app_name] = {}
-
-        # print(f'Processing app {app_name}')
 
         # List of CSV files for user / app
         user_app_csv_files = list(filter(lambda x: app_name in x, user_csv_files))
@@ -236,7 +234,7 @@ verbosity_level = 0
 
 def verbose(msg, level=0):
     if level <= verbosity_level:
-        print(' ' * (level), msg)
+        print('  ' * (level - 1), msg)
 
 
 # ====================================================
@@ -265,11 +263,9 @@ if __name__ == '__main__':
     if not os.path.exists(args.input_dir):
         error(f'{args.input_dir} is an invalid directory!')
 
-    root_data_dir = args.input_dir
-    verbose(f'Parsing files from {root_data_dir}', 1)
-
     # CSV files
-    csv_files = glob.glob(root_data_dir + '/*/*/*/*.csv', recursive=True)
+    verbose(f'Parsing files from {args.input_dir}', 1)
+    csv_files = glob.glob(args.input_dir + '/*/*/*/*.csv', recursive=True)
 
     # User names
     usernames = list(set(map(lambda x: x.split('/', 4)[-3], csv_files)))

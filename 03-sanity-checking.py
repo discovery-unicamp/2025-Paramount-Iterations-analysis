@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 
-import app_group
+from utils.app_group import app_group
 from utils.colors import COLORS
 from utils.experim_aliases import EXPERIM_ALIASES
 
@@ -160,7 +160,7 @@ def wallclock_time_sanity_check_by_app(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group.app_group[app]
+            group = app_group[app]
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -228,7 +228,7 @@ def generate_csv_analysis_per_instance(data):
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group.app_group[app]
+            group = app_group[app]
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -450,7 +450,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
     app_data = {}
     for user, user_data in data['Users'].items():
         for app, usr_app_data in user_data['apps'].items():
-            group = app_group.app_group[app]
+            group = app_group[app]
             if group not in app_data:
                 app_data[group] = {}
             if app not in app_data[group]:
@@ -661,7 +661,7 @@ if __name__ == '__main__':
         error('Input file expected but not provided (-i)')
 
     if not os.path.exists(args.input_file):
-        error(f'{args.input_dir} is an invalid file!')
+        error(f'{args.input_file} not found!')
 
     verbose(f'Loading data from  {args.input_file}', 1)
     with open(args.input_file, 'rb') as file:
