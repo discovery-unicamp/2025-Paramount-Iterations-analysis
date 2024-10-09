@@ -52,7 +52,7 @@ def raw_read_rank_0(exp):
         warning('Empty file: ', exp)
         return pd.DataFrame()
     try:
-        if user.lower() == 'user01':
+        if 'user01' in exp:
             df = pd.read_csv(exp, header=None, names=['time'], dtype=np.float64)
             if 'npb' in exp:
                 # Note that it is used only for reading and comparing a dataset against others
@@ -66,11 +66,16 @@ def raw_read_rank_0(exp):
                 df = pd.DataFrame(
                     {'time': grouped.apply(lambda x: np.average(np.sort(x), weights=weights_array[: len(x)]))}
                 )
+            return df
+        if 'user02' in exp and 'ecp' in exp:
+            df = pd.read_csv(exp)
+            if 'Unnamed: 0' in df.keys():
+                df = df.drop(columns='Unnamed: 0')
         else:
-            colums = raw_colums_user02 if 'user02' in exp else raw_colums  # TODO: check Thais_Camacho
+            colums = raw_colums_user02 if 'user02' in exp else raw_colums
             df = pd.read_csv(exp, header=None, names=colums, usecols=colums[1:], na_values=['na'], dtype=colums_type)
             df.dropna(inplace=True)
-            df = df[df['rank'] == 0].reset_index(drop=True)  # pylint: disable=E1136
+        df = df[df['rank'] == 0].reset_index(drop=True)  # pylint: disable=E1136
         return df
     except Exception as e:
         warning('Exception(', e, ') reading file: ', exp)
@@ -84,16 +89,11 @@ def plot_charts(charts_dir, user, app_name, instance_name, instance_data, ignore
     experim_alias = f'{EXPERIM_ALIASES[app_name]} - {instance_name}'
     verbose(f'Ploting {experim_alias} / {app_name} - {selected}', level=3)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7), dpi=400)
-    # fig, (ax1) = plt.subplots(1, 1, figsize=(10,7), dpi=400)
     isntance_color_order_list = plot_raw_chart(experim_alias, instance_data, ignore, ax1)
     plot_relative_chart(experim_alias, instance_data, window, ignore, ax2, None, isntance_color_order_list)
 
     handles, labels = ax2.get_legend_handles_labels()
-    # labels = [f'$\\textbf{{{label}}}$' if label == selected else label for label in labels]
     labels = [f'*{label}*' if label == selected else label for label in labels]
-
-    # Set font properties based on the condition
-    # font_prop = FontProperties(weight='bold' if label == selected else 'normal')
 
     date_max_name = max([len(i) for i in instance_data])
     ncol = 6
@@ -110,7 +110,6 @@ def plot_charts(charts_dir, user, app_name, instance_name, instance_data, ignore
         mode='expand',
         fancybox=True,
         shadow=True,
-        # prop=font_prop,
     )
 
     # Clone x-axis indices from the second subplot to the first subplot
@@ -146,8 +145,8 @@ def seek_result(multiple_execs):
     if not experiment_sum:
         try:
             warning('*** Any valid result for ' + ' - '.join(multiple_execs[0].split('/')[-4:-2]))
-        except:
-            warning('*** Any valid result found...')
+        except Exception:
+            warning(f'*** Any valid result found in: {multiple_execs}')
         return pd.DataFrame(), ''
     # Retrieve the corresponding dataframe and csv path
     sorted_sums = sorted(list(experiment_sum.keys()))
@@ -155,7 +154,6 @@ def seek_result(multiple_execs):
     selected_idx = (len(sorted_sums) - 1) // 2  # median (lower)
     selected_sum = sorted_sums[selected_idx]
     dataframe, csv_path = experiment_sum[selected_sum]
-    # dataframe, csv_path = experiment_sum[str(np.median(sum_list))]
     verbose(f'Selecting instance: {selected_sum} - {csv_path}', level=4)
     return dataframe, csv_path
 

@@ -208,13 +208,13 @@ def parse_user_data(user, parsed_data, csv_files):
             if len(df.keys()) == 1:
                 df.columns = ['time']
 
-            # FIX results from Jeferson's experiments: Convert time from sec to msec
+            # FIX results from user01's experiments: Convert time from sec to msec
             time_conversion_factor = 1000  # Convert sec to msec
-            if any(name in instance_csv_file.lower() for name in ['jeferson']):
+            if any(name in instance_csv_file.lower() for name in ['user01']):
                 time_conversion_factor = 0.001  # Convert usec to msec
 
-            # Apparently, the results collected by Thais_Camacho switched columns abs_time and time. Adjusting for this case.
-            if user == 'Thais_Camacho':
+            # Apparently, the results collected by 'user02' switched columns abs_time and time. Adjusting for this case.
+            if user == 'user02':
                 PI_time_col = 'abs_time'
                 ABS_time_col = 'time'
             else:

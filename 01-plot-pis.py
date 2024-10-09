@@ -172,8 +172,8 @@ def process_user_data(pdfs_results_dir, results_data_location, user, ignore, win
                 df = df.drop(columns='Unnamed: 0')
             if len(df.keys()) == 1:
                 df.columns = ['time']
-            # Apparently, the results collected by Thais_Camacho switched columns abs_time and time. Adjusting for this case.
-            if user == 'Thais_Camacho':
+            # Apparently, the results collected by 'user02' switched columns abs_time and time. Adjusting for this case.
+            if user == 'user02':
                 df['time'] = df['abs_time']
             if 'rank' in df.columns:
                 df = df[df['rank'] == 0]
