@@ -171,40 +171,46 @@ def get_user_apps(csv_data_location, user):
     return selected_path, sorted(user_apps)
 
 
-def process_user_data(csv_data_location, charts_dir, user, ignore, window):
-    selected_path, user_apps = get_user_apps(csv_data_location, user)
-    for bench_name in user_apps:
-        verbose(f'Processing {user} benchmark {bench_name}', level=1)
-        for instance_path in glob.glob(os.path.join(selected_path, bench_name, '*', '*', '')):
-            path_parts = Path(instance_path).parts
-            instance_name = path_parts[-1]
-            app_name = path_parts[-2]
-            multiple_execs = glob.glob(os.path.join(instance_path, '*', '*.csv'))
-            dataframe, csv_path = seek_result(multiple_execs)
-            if dataframe.empty:
-                warning(f'Any {bench_name} data\n\t{multiple_execs}')
-                continue
-            selected = ''
-            instance_data = dict()
-            for count, exp in enumerate(multiple_execs, 1):
-                df = raw_read_rank_0(exp)
-                if df.empty:
-                    continue
-                df.index = df.index + 1  # Set it=1 to the fisrt iteration
-                exp_name = f'Exp. {count}'
-                instance_data[exp_name] = df
-                if csv_path == exp:
-                    selected = exp_name
-            dataset_lens = set([len(a) for a in instance_data.values()])
-            if len(dataset_lens) != 1:
-                warning(f'Inconsistent dataset_lens: {dataset_lens}')
-            if len(instance_data) < 2:
-                warning(f'Just a single execution for instance {instance_name}')
-                break
-            plot_charts(charts_dir, user, app_name, instance_name, instance_data, ignore, window, selected)
+def select_right_experiment(csv_path, instance_name, dataframe, output_path):
+    os.makedirs(output_path, exist_ok=True)
+    result_filename = os.path.join(output_path, f'{instance_name}.csv')
+
+    if user.lower() == 'user01':
+        verbose(f'Coping from {csv_path} to {result_filename}', level=2)
+        shutil.copyfile(csv_path, result_filename)
+    else:
+        # Note that this dataset contains only the Rank0
+        verbose(f'Generating {result_filename}', level=2)
+        dataframe.to_csv(result_filename)
+
+    extra_info_file = f'{os.path.splitext(csv_path)[0]}_info.json'
+    if os.path.exists(extra_info_file):
+        verbose(f'Coping extra info file {extra_info_file}', level=3)
+        shutil.copyfile(extra_info_file, f'{os.path.splitext(result_filename)[0]}_info.json')
 
 
-def select_right_experiment(csv_data_location, csv_output_dir, user):
+def plot_mult_exec_charts(csv_path, instance_name, multiple_execs, charts_dir, app_name, ignore, window):
+    selected = ''
+    instance_data = dict()
+    for count, exp in enumerate(multiple_execs, 1):
+        df = raw_read_rank_0(exp)
+        if df.empty:
+            continue
+        df.index = df.index + 1  # Set it=1 to the fisrt iteration
+        exp_name = f'Exp. {count}'
+        instance_data[exp_name] = df
+        if csv_path == exp:
+            selected = exp_name
+    dataset_lens = set([len(a) for a in instance_data.values()])
+    if len(dataset_lens) != 1:
+        warning(f'Inconsistent dataset_lens: {dataset_lens}')
+    if len(instance_data) < 2:
+        warning(f'Just a single execution for instance {instance_name}')
+        return
+    plot_charts(charts_dir, user, app_name, instance_name, instance_data, ignore, window, selected)
+
+
+def process_user_data(csv_data_location, user, ignore, window, charts_dir, csv_output_dir):
     selected_path, user_apps = get_user_apps(csv_data_location, user)
     for bench_name in user_apps:
         verbose(f'Processing {user} benchmark {bench_name}', level=1)
@@ -213,27 +219,16 @@ def select_right_experiment(csv_data_location, csv_output_dir, user):
             instance_name = path_parts[-1]
             dataset_id = instance_name.split('-')[-1]
             app_name = f'{path_parts[-2]}-{dataset_id}' if '-' in instance_name else path_parts[-2]
-            output_path = os.path.join(csv_output_dir, bench_name, user, app_name)
-            os.makedirs(output_path, exist_ok=True)
             multiple_execs = glob.glob(os.path.join(instance_path, '*', '*.csv'))
             dataframe, csv_path = seek_result(multiple_execs)
             if dataframe.empty:
                 warning(f'Any {bench_name} data\n\t{multiple_execs}')
                 continue
-            result_filename = os.path.join(output_path, f'{instance_name}.csv')
-
-            if user.lower() == 'user01':
-                verbose(f'Coping from {csv_path} to {result_filename}', level=2)
-                shutil.copyfile(csv_path, result_filename)
-            else:
-                # Note that this dataset contains only the Rank0
-                verbose(f'Generating {result_filename}', level=2)
-                dataframe.to_csv(result_filename)
-
-            extra_info_file = f'{os.path.splitext(csv_path)[0]}_info.json'
-            if os.path.exists(extra_info_file):
-                verbose(f'Coping extra info file {extra_info_file}', level=3)
-                shutil.copyfile(extra_info_file, f'{os.path.splitext(result_filename)[0]}_info.json')
+            if charts_dir:
+                plot_mult_exec_charts(csv_path, instance_name, multiple_execs, charts_dir, app_name, ignore, window)
+            if csv_output_dir:
+                output_path = os.path.join(csv_output_dir, bench_name, user, app_name)
+                select_right_experiment(csv_path, instance_name, dataframe, output_path)
 
 
 if __name__ == '__main__':
@@ -268,18 +263,18 @@ if __name__ == '__main__':
         if not os.path.exists(args.csv_data_dir):
             warning(f'Creating CSV output directory: {args.csv_data_dir}')
             os.makedirs(args.csv_data_dir)
-        # Select right CSV experiment
-        for user in usernames:
-            verbose(f'Processing CSV input files for user {user}', level=2)
-            select_right_experiment(csv_data_location, args.csv_data_dir, user)
 
     if args.charts_dir:
         if not os.path.exists(args.charts_dir):
             warning(f'Creating output directory: {args.charts_dir}')
             os.makedirs(args.charts_dir)
-        # Generate the mult-exec charts
-        for user in usernames:
-            verbose(f'Generating comparison charts for user {user}', level=2)
-            process_user_data(csv_data_location, args.charts_dir, user, args.ignore, args.window)
     elif args.ignore or args.window:
         warning('Arguments "--ignore" and "--window" are only suported for charts!')
+
+    if not args.csv_data_dir and not args.charts_dir:
+        error('At least one output type is required (csv_data_dir or charts_dir)')
+
+    # Process user entries
+    for user in usernames:
+        verbose(f'Processing CSV input files for user {user}', level=2)
+        process_user_data(csv_data_location, user, args.ignore, args.window, args.charts_dir, args.csv_data_dir)
