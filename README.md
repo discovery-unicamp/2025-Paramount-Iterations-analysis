@@ -3,15 +3,15 @@
 This repository contains:
 
 1) Scripts to analyze the Paramount Iteration data collected from several applications running on the cloud.
-2) Output files produced by these scripts.
+2) Key output files produced by these scripts.
 
 ## Scripts
 
-- `00_process_raw_csv.py`: process Paramount Iterations CSVs of multiple executions, producing the charts of multiple executions and selecting the median result.
-- `01-plot-pis.py`: compare the iterations of an application in multiple cloud executions.
-- `02-extract-logs.py`: parse the median CSVs files and generate a single pickle file with the data for analysis.
-- `03-sanity-checking.py`: analyze the data in the pickle file, producing `analysis_per_application` and `analysis_per_instance`.
-- `04-post-process.py`: generate the histogram charts and LaTex table based on the `analysis_per_application.csv`.
+- `00_process_raw_csv.py`: Process Paramount Iterations CSVs of multiple executions, producing the charts of multiple executions and selecting the median result.
+- `01-plot-pis.py`: Compare the iterations of an application in multiple cloud executions.
+- `02-extract-logs.py`: Parse the median CSVs files and generate a single pickle file with the data for analysis.
+- `03-sanity-checking.py`: Analyze the data in the pickle file, producing `analysis_per_application` and `analysis_per_instance`.
+- `04-post-process.py`: Generate the histogram charts and LaTex table based on the `analysis_per_application.csv`.
 
 ### Executing the scripts
 
@@ -24,7 +24,7 @@ This repository contains:
 ./04-post-process.py --input_file prediction_data-analysis_per_application.csv --verbosity 3 --output_sufix prediction_data --generate_histogram --generate_latex
 ```
 
-## Output
+## Outputs
 
 ### Files
 - `prediction_data.pkl`: Pickle file with data to be analyzed (extracted from CSV files)
@@ -34,7 +34,7 @@ This repository contains:
 - `histogram_[time|cost]-prediction_data.pdf`: Histograms of Pearson Correlations for time and cost of metrics.
 
 ### Directories
-- `csv_selected_data/**/*.csv`: 
-- `charts_mult-exec/*.pdf`: 
-- `charts_pi/*.pdf`: 
+- `csv_selected_data/**/*.csv`: Filtered median CSVs of experiments.
+- `charts_mult-exec/*.pdf`: Charts of multiple executions on an experiment at the same cloud configuration.
+- `charts_pi/*.pdf`: Plots of Paramount Iterations in all cloud configurations.
 - `charts_analysis/[costs/]*.pdf`: Set of PDF files with charts produced for each one of the applications analyzed.
