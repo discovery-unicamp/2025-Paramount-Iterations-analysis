@@ -177,10 +177,7 @@ def parse_user_data(user, parsed_data, csv_files):
         user_app_csv_files = list(filter(lambda x: app_name in x, user_csv_files))
 
         for instance_csv_file in user_app_csv_files:
-            dataset_name = 'generic'
-            if '-' in app_name:
-                dataset_name = f'group-{app_name.split('-')[-1]}'
-
+            dataset_name = app_name
             if dataset_name not in parsed_data['Users'][user]['apps'][app_name]:
                 parsed_data['Users'][user]['apps'][app_name][dataset_name] = {}
 
@@ -270,7 +267,7 @@ if __name__ == '__main__':
     csv_files = glob.glob(args.input_dir + '/*/*/*/*.csv', recursive=True)
 
     # User names
-    usernames = list(set(map(lambda x: x.split('/', 4)[-3], csv_files)))
+    usernames = list(set(map(lambda x: x.split('/')[-3], csv_files)))
     usernames.sort()
     verbose('Usernames:' + str(usernames), 2)
 

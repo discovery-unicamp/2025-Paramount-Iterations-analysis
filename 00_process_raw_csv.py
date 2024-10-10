@@ -161,8 +161,7 @@ def seek_result(multiple_execs):
 def get_user_apps(csv_data_location, user):
     selected_path_l = list(filter(lambda x: user in x, csv_data_location))
     if len(selected_path_l) != 1:
-        # Olhar para os "dastaset"
-        raise Exception(f'Deu ruim aqui, mano {user}')
+        error(f'More than one candidate path for user: {user}')
     selected_path = selected_path_l[0]
     applications = glob.glob(os.path.join(selected_path, '*/'))
     user_apps = list(map(lambda x: x.split('/')[-2], applications))
@@ -215,8 +214,7 @@ def process_user_data(csv_data_location, user, ignore, window, charts_dir, csv_o
         for instance_path in glob.glob(os.path.join(selected_path, bench_name, '*', '*', '')):
             path_parts = Path(instance_path).parts
             instance_name = path_parts[-1]
-            dataset_id = instance_name.split('-')[-1]
-            app_name = f'{path_parts[-2]}-{dataset_id}' if '-' in instance_name else path_parts[-2]
+            app_name = path_parts[-2]
             multiple_execs = glob.glob(os.path.join(instance_path, '*', '*.csv'))
             dataframe, csv_path = seek_result(multiple_execs)
             if dataframe.empty:
@@ -225,7 +223,7 @@ def process_user_data(csv_data_location, user, ignore, window, charts_dir, csv_o
             if charts_dir:
                 plot_mult_exec_charts(csv_path, instance_name, multiple_execs, charts_dir, app_name, ignore, window)
             if csv_output_dir:
-                output_path = os.path.join(csv_output_dir, bench_name, user, app_name)
+                output_path = os.path.join(csv_output_dir, user, bench_name, app_name)
                 select_right_experiment(csv_path, instance_name, dataframe, output_path)
 
 
@@ -258,7 +256,10 @@ if __name__ == '__main__':
     verbose(f'Processing input files for users: {usernames}', level=1)
 
     if args.csv_data_dir:
-        if not os.path.exists(args.csv_data_dir):
+        if os.path.exists(args.csv_data_dir):
+            if len(os.listdir(args.csv_data_dir)) > 0:
+                error(f'Provided output dir is not empty: {args.csv_data_dir}')
+        else:
             warning(f'Creating CSV output directory: {args.csv_data_dir}')
             os.makedirs(args.csv_data_dir)
 

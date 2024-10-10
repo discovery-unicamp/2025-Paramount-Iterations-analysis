@@ -31,15 +31,6 @@ def verbose(msg, level=0):
     if level <= verbosity_level:
         print(msg)
 
-def get_app_equivalent(app, app_equivalent):
-    if app in app_equivalent:
-        return app_equivalent[app]
-    if '-' in app:
-        app2 = '-'.join(app.split('-')[:-1])
-        if app2 in app_equivalent:
-            return app_equivalent[app2]
-    error(f'Not found an quivalent for app {app}')
-    return ''
 
 # ====================================================
 
@@ -82,7 +73,7 @@ def load_and_clean_result(input_file):
 
     df = df[df['Rank 0 min/max PI sample ratio'] > 0.7]
 
-    df['app_alias'] = df['app'].apply(lambda app: f'\\app{{{get_app_equivalent(app, EXPERIM_ALIASES).replace("_", "\\_")}}}')
+    df['app_alias'] = df['app'].apply(lambda app: f'\\app{{{EXPERIM_ALIASES[app].replace("_", "\\_")}}}')
     df['app_behavior'] = df.apply(lambda x: get_app_behavior(x.group, x.app), axis=1)
     print(f'Total lines: {len(df.index)}')
     print(df['app_behavior'].value_counts())
@@ -183,7 +174,9 @@ if __name__ == '__main__':
     # Adding optional argument
     parser.add_argument('-v', '--verbosity', help='Verbosity level: 0 (default), 1, 2, 3, 4')
     parser.add_argument('-i', '--input_file', help='Input CSV file')
-    parser.add_argument('-o', '--output_sufix', help='Output file sufix: default is the current day', default=date.today().isoformat())
+    parser.add_argument(
+        '-o', '--output_sufix', help='Output file sufix: default is the current day', default=date.today().isoformat()
+    )
     parser.add_argument('--generate_histogram', help='Generate histograms', action='store_true', default=False)
     parser.add_argument('--generate_latex', help='Generate a LaTeX file', action='store_true', default=False)
 
