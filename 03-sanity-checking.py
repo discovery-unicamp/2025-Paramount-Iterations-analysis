@@ -110,6 +110,8 @@ def verbose(msg, level=0):
 
 # ====================================================
 
+DISCARD_THRESHOLD = 1.2  # Discard values greathar than 20% of the reference
+
 
 # ====================================================
 def wallclock_time_sanity_check(data):
@@ -426,6 +428,12 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
             'Rank 0 max PI samples',
             'Rank 0 min/max PI sample ratio',
         ]
+        + [
+            f'{mode} {pm} - {metric}'
+            for pm in ['From 2 to 5', 'From 2 to 10']
+            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x']
+            for metric in ['time', 'cost']
+        ]
         + ['Wallclock vs All PIs - chartname']
         + [
             f'{pm_type} vs All PIs - {pm2}'
@@ -515,6 +523,43 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                             rank0_max_samples = rank0_samples
                         if rank0_samples > rank0_max_samples:
                             rank0_max_samples = rank0_samples
+
+                    for pm in ['From 2 to 5', 'From 2 to 10']:
+                        proxy_time_l = proxy_metrics_l[pm]
+                        min_proxy_time = min(proxy_time_l)
+                        proxy_cost_l = proxy_metrics_l[f'{pm}-Cost']
+                        min_proxy_cost = min(proxy_cost_l)
+
+                        filter_time_by_cost_l = [
+                            proxy_time_l[idx]
+                            for idx in range(len(proxy_time_l))
+                            if proxy_cost_l[idx] / min_proxy_cost <= DISCARD_THRESHOLD
+                        ]
+                        filter_cost_by_time_l = [
+                            proxy_cost_l[idx]
+                            for idx in range(len(proxy_cost_l))
+                            if proxy_time_l[idx] / min_proxy_time <= DISCARD_THRESHOLD
+                        ]
+                        filter_wall_time_by_cost_l = [
+                            PIs_sum_l[idx]
+                            for idx in range(len(PIs_sum_l))
+                            if PIs_cost_l[idx] / min(PIs_cost_l) <= DISCARD_THRESHOLD
+                        ]
+                        filter_wall_cost_by_time_l = [
+                            PIs_cost_l[idx]
+                            for idx in range(len(PIs_cost_l))
+                            if PIs_sum_l[idx] / min(PIs_sum_l) <= DISCARD_THRESHOLD
+                        ]
+                        row_data[f'Prop. {pm} - time'] = PIs_sum_l[proxy_time_l.index(min_proxy_time)] / min(PIs_sum_l)
+                        row_data[f'Prop. {pm} - cost'] = PIs_cost_l[proxy_cost_l.index(min_proxy_cost)] / min(
+                            PIs_cost_l
+                        )
+                        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - time'] = PIs_sum_l[
+                            proxy_time_l.index(min(filter_time_by_cost_l))
+                        ] / min(filter_wall_time_by_cost_l)
+                        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - cost'] = PIs_cost_l[
+                            proxy_cost_l.index(min(filter_cost_by_time_l))
+                        ] / min(filter_wall_cost_by_time_l)
 
                     row_data['# instances'] = len(PIs_sum_l)
                     row_data['Rank 0 min PI samples'] = rank0_min_samples
