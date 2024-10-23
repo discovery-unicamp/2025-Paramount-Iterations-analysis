@@ -409,6 +409,51 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     return filename
 
 
+def calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
+    row_data = {}
+    for pm in ['From 2 to 5', 'From 2 to 10']:
+        proxy_time_l = proxy_metrics_l[pm]
+        proxy_cost_l = proxy_metrics_l[f'{pm}-Cost']
+
+        filter_time_by_prox_cost_l = [
+            proxy_time_l[idx]
+            for idx in range(len(proxy_time_l))
+            if proxy_cost_l[idx] / min(proxy_cost_l) <= DISCARD_THRESHOLD
+        ]
+        idx_min_time_by_prox_cost = proxy_time_l.index(min(filter_time_by_prox_cost_l))
+
+        filter_cost_by_proxy_time_l = [
+            proxy_cost_l[idx]
+            for idx in range(len(proxy_cost_l))
+            if proxy_time_l[idx] / min(proxy_time_l) <= DISCARD_THRESHOLD
+        ]
+        idx_min_cost_by_proxy_time = proxy_cost_l.index(min(filter_cost_by_proxy_time_l))
+
+        filter_sum_time_by_cost_l = [
+            PIs_sum_l[idx] for idx in range(len(PIs_sum_l)) if PIs_cost_l[idx] / min(PIs_cost_l) <= DISCARD_THRESHOLD
+        ]
+        idx_min_time_by_real_cost = PIs_sum_l.index(min(filter_sum_time_by_cost_l))
+
+        filter_sum_cost_by_time_l = [
+            PIs_cost_l[idx] for idx in range(len(PIs_cost_l)) if PIs_sum_l[idx] / min(PIs_sum_l) <= DISCARD_THRESHOLD
+        ]
+        idx_min_cost_by_real_time = PIs_cost_l.index(min(filter_sum_cost_by_time_l))
+
+        row_data[f'Prop. {pm} - time'] = PIs_sum_l[proxy_time_l.index(min(proxy_time_l))] / min(PIs_sum_l)
+        row_data[f'Prop. {pm} - cost'] = PIs_cost_l[proxy_cost_l.index(min(proxy_cost_l))] / min(PIs_cost_l)
+        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - time'] = PIs_sum_l[idx_min_time_by_prox_cost] / min(
+            filter_sum_time_by_cost_l
+        )
+        row_data[f'Max {DISCARD_THRESHOLD}x - error - {pm} - time'] = (
+            PIs_cost_l[idx_min_time_by_prox_cost] / PIs_cost_l[idx_min_time_by_real_cost]
+        )
+        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - cost'] = PIs_cost_l[idx_min_cost_by_proxy_time] / min(
+            filter_sum_cost_by_time_l
+        )
+        row_data[f'Max {DISCARD_THRESHOLD}x - error - {pm} - cost'] = PIs_sum_l[idx_min_cost_by_proxy_time] / PIs_sum_l[idx_min_cost_by_real_time]
+    return row_data
+
+
 def generate_csv_analysis_per_application(data, charts_output_directory, costs_subdir=''):
     proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']  # , '0.5_s', '0.5_s-first']
     proxy_metrics_2 = ['R2*', 'R2', 'Intercept', 'Slope', 'Intercept/min PIs sum', 'chartname']
@@ -431,7 +476,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
         + [
             f'{mode} {pm} - {metric}'
             for pm in ['From 2 to 5', 'From 2 to 10']
-            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x']
+            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x', f'Max {DISCARD_THRESHOLD}x - error -']
             for metric in ['time', 'cost']
         ]
         + ['Wallclock vs All PIs - chartname']
@@ -524,42 +569,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                         if rank0_samples > rank0_max_samples:
                             rank0_max_samples = rank0_samples
 
-                    for pm in ['From 2 to 5', 'From 2 to 10']:
-                        proxy_time_l = proxy_metrics_l[pm]
-                        min_proxy_time = min(proxy_time_l)
-                        proxy_cost_l = proxy_metrics_l[f'{pm}-Cost']
-                        min_proxy_cost = min(proxy_cost_l)
-
-                        filter_time_by_cost_l = [
-                            proxy_time_l[idx]
-                            for idx in range(len(proxy_time_l))
-                            if proxy_cost_l[idx] / min_proxy_cost <= DISCARD_THRESHOLD
-                        ]
-                        filter_cost_by_time_l = [
-                            proxy_cost_l[idx]
-                            for idx in range(len(proxy_cost_l))
-                            if proxy_time_l[idx] / min_proxy_time <= DISCARD_THRESHOLD
-                        ]
-                        filter_wall_time_by_cost_l = [
-                            PIs_sum_l[idx]
-                            for idx in range(len(PIs_sum_l))
-                            if PIs_cost_l[idx] / min(PIs_cost_l) <= DISCARD_THRESHOLD
-                        ]
-                        filter_wall_cost_by_time_l = [
-                            PIs_cost_l[idx]
-                            for idx in range(len(PIs_cost_l))
-                            if PIs_sum_l[idx] / min(PIs_sum_l) <= DISCARD_THRESHOLD
-                        ]
-                        row_data[f'Prop. {pm} - time'] = PIs_sum_l[proxy_time_l.index(min_proxy_time)] / min(PIs_sum_l)
-                        row_data[f'Prop. {pm} - cost'] = PIs_cost_l[proxy_cost_l.index(min_proxy_cost)] / min(
-                            PIs_cost_l
-                        )
-                        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - time'] = PIs_sum_l[
-                            proxy_time_l.index(min(filter_time_by_cost_l))
-                        ] / min(filter_wall_time_by_cost_l)
-                        row_data[f'Max {DISCARD_THRESHOLD}x {pm} - cost'] = PIs_cost_l[
-                            proxy_cost_l.index(min(filter_cost_by_time_l))
-                        ] / min(filter_wall_cost_by_time_l)
+                    row_data.update(calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l))
 
                     row_data['# instances'] = len(PIs_sum_l)
                     row_data['Rank 0 min PI samples'] = rank0_min_samples
