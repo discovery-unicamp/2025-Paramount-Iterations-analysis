@@ -306,7 +306,8 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     # min_coorelation = min(X_values) / min(Y_values)
     # median_coorelation = statistics.median(X_values) / statistics.median(Y_values)
 
-    # print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
+    # print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): '
+    #       f'(sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
 
     correlation_factor_str = ''
     # if abs(r_squared - 1.0) < 0.1 and abs(median_coorelation - 1.0) > 0.01:
@@ -450,7 +451,9 @@ def calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
         row_data[f'Max {DISCARD_THRESHOLD}x {pm} - cost'] = PIs_cost_l[idx_min_cost_by_proxy_time] / min(
             filter_sum_cost_by_time_l
         )
-        row_data[f'Max {DISCARD_THRESHOLD}x - error - {pm} - cost'] = PIs_sum_l[idx_min_cost_by_proxy_time] / PIs_sum_l[idx_min_cost_by_real_time]
+        row_data[f'Max {DISCARD_THRESHOLD}x - error - {pm} - cost'] = (
+            PIs_sum_l[idx_min_cost_by_proxy_time] / PIs_sum_l[idx_min_cost_by_real_time]
+        )
     return row_data
 
 
