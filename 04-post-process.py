@@ -175,44 +175,45 @@ def plot_proxy_selection_histogram(df, output_sufix):
     # correlations = [key for key in df.keys() if (key.startswith('From') or key.startswith('Max') and 'error' not in key)]
     pass
 
+
 # Custom formatter function
 def custom_formatter(x, pos):
-    if x == 1:
+    if x == 0:
         return ''
-    return f'{x:.0f}x'
+    # Compensate the ticker by the gap in negative values (between -1 and 1)
+    if abs(x - int(x)) > 0.1:
+        return f'{x-1:.1f}x' if x < 0 else f'{x+1:.1f}x'
+    return f'{x-1:.0f}x' if x < 0 else f'{x+1:.0f}x'
+
 
 def generate_proxy_selection_chart(df, output_sufix):
     proxies = set([key.split(' - ', 3)[-2] for key in df.keys() if key.startswith('Max') and ' - error - ' in key])
     metrics = ['time', 'cost']
     for proxy, idx, metric in [(p, i, m) for i, m in enumerate(metrics) for p in proxies]:
-        relative_metric = df[f'Max {DISCARD_THRESHOLD}x {proxy} - {metric}']
-        relative_error = df[f'Max {DISCARD_THRESHOLD}x - error - {proxy} - {metric}']
-        df2 = df[(relative_error != 1.0) | (relative_metric != 1.0)]
-        # app_names = df2[['user', 'dataset']].apply(lambda r: f'{r.user} {r.dataset}', axis=1).values.tolist()
+        relative_metric_df = df[f'Max {DISCARD_THRESHOLD}x {proxy} - {metric}']
+        relative_error_df = df[f'Max {DISCARD_THRESHOLD}x - error - {proxy} - {metric}']
+        df2 = df[(relative_error_df != 1.0) | (relative_metric_df != 1.0)]
+        # Ajust the relative values below 1.0 and fill the gap between -1 and 1
+        relative_metric = [value - 1 if value >= 1 else 1 - (1 / value) for value in df2[relative_metric_df.name]]
+        relative_error = [value - 1 if value >= 1 else 1 - (1 / value) for value in df2[relative_error_df.name]]
         app_names = df2['dataset'].values.tolist()
-        relative_metric = [value if value>=1 else -(1/value) for value in df2[relative_metric.name]]
-        relative_error = [value if value>=1 else -(1/value) for value in df2[relative_error.name]]
 
         # Plot each point with its corresponding app name
         for i, (x, y) in enumerate(zip(relative_metric, relative_error)):
             plt.scatter(x, y, label=EXPERIM_ALIASES[app_names[i]], color=COLORS[i])
 
         for relative_ref, lim_f in [(relative_metric, plt.xlim), (relative_error, plt.ylim)]:
-            axel_start, axel_end = int(min(relative_ref)) - 1, int(max(relative_ref)) + 1
-            axel_limit = max(abs(axel_start), axel_end)
-            lim_f(-axel_limit, axel_limit+2)
+            axel_start, axel_end = int(min(relative_ref)), int(max(relative_ref))
+            axel_limit = max(abs(axel_start), axel_end) + 1
+            print((-axel_limit, axel_limit))
+            lim_f(-axel_limit, axel_limit)
 
-
-        # Move the spines to (1, 1)
+        # Move the spines to (0, 0) -> Equivalent to (1,1) when the gap (between -1 and 1) is compensated
         ax = plt.gca()
-        ax.spines['left'].set_position(('data', 1))
-        ax.spines['bottom'].set_position(('data', 1))
+        ax.spines['left'].set_position(('data', 0))
+        ax.spines['bottom'].set_position(('data', 0))
         ax.spines['top'].set_color('none')
         ax.spines['right'].set_color('none')
-
-        # # Make the last xtick invisible, but keep the space
-        # ax.xaxis.get_major_ticks()[-1].set_visible(False)
-        # ax.yaxis.get_major_ticks()[-1].set_visible(False)
 
         # Set the custom formatter for the axis
         ax.xaxis.set_major_formatter(FuncFormatter(custom_formatter))
