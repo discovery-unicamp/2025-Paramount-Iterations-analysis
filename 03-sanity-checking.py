@@ -8,6 +8,7 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy
 
 from utils.app_group import app_group
@@ -411,6 +412,45 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
 
 
 def calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
+    metrics = ['time', 'cost']
+    proxies = ['From 2 to 5', 'From 2 to 10']
+    result = {}
+    df_real = pd.DataFrame({'time': PIs_sum_l, 'cost': PIs_cost_l})
+    data = {'real': df_real}
+    data.update(
+        {pm: pd.DataFrame({'time': proxy_metrics_l[pm], 'cost': proxy_metrics_l[f'{pm}-Cost']}) for pm in proxies}
+    )
+
+    for df in data.values():
+        for metric, counter_metric in zip(metrics, metrics[::-1]):
+            df[f'{metric}/{counter_metric}'] = df[metric] / df[counter_metric]
+        for column in df.columns:
+            df[f'{column} prop.'] = df[column] / df[column].min()
+
+    for metric, counter_metric in zip(metrics, metrics[::-1]):
+        idx_min_real_criteria = df_real[metric][df_real[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
+        for pm, df in [(pm, data[pm]) for pm in proxies]:
+            # Calculate the fastest/cheapest
+            # result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
+            result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
+            # Calculate the fastest/cheapest considerim the counterpart limited
+            min_proxy_criteria_idx = df[metric][df[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
+            # result[f'Max {DISCARD_THRESHOLD}x {counter_metric} - {pm}'] = (
+            result[f'Max {DISCARD_THRESHOLD}x {pm} - {metric}'] = (
+                df_real[metric][min_proxy_criteria_idx] / df_real[metric][idx_min_real_criteria]
+            )
+            # result[f'Max {DISCARD_THRESHOLD}x {counter_metric} - error - {pm}'] = (
+            result[f'Max {DISCARD_THRESHOLD}x - error - {pm} - {metric}'] = (
+                df_real[counter_metric][min_proxy_criteria_idx] / df_real[counter_metric][idx_min_real_criteria]
+            )
+
+    # if any([result[key] > 5 for key in result]):
+    #     print(result)
+    #     raise Exception
+    return result
+
+
+def calculate_correlations_old(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
     row_data = {}
     for pm in ['From 2 to 5', 'From 2 to 10']:
         proxy_time_l = proxy_metrics_l[pm]
