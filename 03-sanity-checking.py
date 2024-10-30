@@ -112,6 +112,8 @@ def verbose(msg, level=0):
 # ====================================================
 
 DISCARD_THRESHOLD = 1.2  # Discard values greathar than 20% of the reference
+WEIGHT_TIME = 1  # Multiply the proportional time weight
+WEIGHT_COST = 1  # Multiply the proportional cost weight
 
 
 # ====================================================
@@ -426,14 +428,14 @@ def calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
             df[f'{metric}/{counter_metric}'] = df[metric] / df[counter_metric]
         for column in df.columns:
             df[f'{column} prop.'] = df[column] / df[column].min()
+        df['cost-benefit'] = WEIGHT_TIME * df['time/cost prop.'] + WEIGHT_COST * df['cost/time prop.']
 
     for metric, counter_metric in zip(metrics, metrics[::-1]):
         idx_min_real_criteria = df_real[metric][df_real[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
         for pm, df in [(pm, data[pm]) for pm in proxies]:
             # Calculate the fastest/cheapest
-            # result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
             result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
-            # Calculate the fastest/cheapest considerim the counterpart limited
+            # Calculate the fastest/cheapest considerim the counter-metric limited
             min_proxy_criteria_idx = df[metric][df[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
             # result[f'Max {DISCARD_THRESHOLD}x {counter_metric} - {pm}'] = (
             result[f'Max {DISCARD_THRESHOLD}x {pm} - {metric}'] = (
@@ -444,8 +446,7 @@ def calculate_correlations(proxy_metrics_l, PIs_sum_l, PIs_cost_l):
                 df_real[counter_metric][min_proxy_criteria_idx] / df_real[counter_metric][idx_min_real_criteria]
             )
 
-    # if any([result[key] > 5 for key in result]):
-    #     print(result)
+    # if any([result[key] > 4 for key in result]):
     #     raise Exception
     return result
 

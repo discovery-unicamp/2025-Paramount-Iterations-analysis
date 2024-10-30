@@ -256,8 +256,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '-o', '--output_sufix', help='Output file sufix: default is the current day', default=date.today().isoformat()
     )
-    parser.add_argument('--generate_histogram', help='Generate histograms', action='store_true', default=False)
     parser.add_argument('--generate_latex', help='Generate a LaTeX file', action='store_true', default=False)
+    parser.add_argument('--generate_histogram', help='Generate histograms', action='store_true', default=False)
+    parser.add_argument('--projection_charts', help='Generate projections charts', action='store_true', default=False)
 
     # Read arguments from command line
     args = parser.parse_args()
@@ -279,5 +280,5 @@ if __name__ == '__main__':
     if args.generate_histogram:
         generate_histograms(df, args.output_sufix)
 
-    if projection_charts:
+    if args.projection_charts:
         generate_proxy_selection_chart(df, args.output_sufix)
