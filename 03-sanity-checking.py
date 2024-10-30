@@ -434,8 +434,8 @@ def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
     pareto_comp = df_ref[pareto_efficient_mask(df_comparison)]
     # chose = df_ref.iloc[pareto_ref['cost-benefit'].idxmin()]
 
-    plt.scatter(df_ref['time prop.'], df_ref['cost prop.'], label='All Points - Real', color='blue', s=100)
-    plt.scatter(pareto_ref['time prop.'], pareto_ref['cost prop.'], label='Pareto Front - Real', color='green', s=100)
+    plt.scatter(df_ref['time prop.'], df_ref['cost prop.'], label='All Points - Real', color='blue', s=60)
+    plt.scatter(pareto_ref['time prop.'], pareto_ref['cost prop.'], label='Pareto Front - Real', color='green', s=60)
 
     # plt.scatter(
     #     df_comparison['time prop.'],
@@ -448,10 +448,13 @@ def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
         pareto_comp['time prop.'],
         pareto_comp['cost prop.'],
         label=f'Pareto Front - Proxy {pm}',
-        color='black',
+        color='red',
+        # edgecolor='black',
+        # alpha=.55,
         marker='x',
-        s=100,
+        s=50,
     )
+    plt.axhline(1.2, linestyle='--', color='gray')
     # plt.scatter(chose['time'], chose['cost'], label='Cost-benefit', color='red')
 
     plt.xlabel('Proportional time')
