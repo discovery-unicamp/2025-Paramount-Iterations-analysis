@@ -178,8 +178,8 @@ def plot_proxy_selection_histogram(df, output_sufix):
 
 # Custom formatter function
 def custom_formatter(x, pos):
-    if x == 0:
-        return ''
+    if x == 0.0:
+        return '1x'
     # Compensate the ticker by the gap in negative values (between -1 and 1)
     if abs(x - int(x)) > 0.1:
         return f'{x-1:.1f}x' if x < 0 else f'{x+1:.1f}x'
@@ -200,7 +200,7 @@ def generate_proxy_selection_chart(df, output_sufix):
 
         # Plot each point with its corresponding app name
         for i, (x, y) in enumerate(zip(relative_metric, relative_error)):
-            plt.scatter(x, y, label=EXPERIM_ALIASES[app_names[i]], color=COLORS[i])
+            plt.scatter(x, y, label=EXPERIM_ALIASES[app_names[i]][:25], color=COLORS[i])
 
         for relative_ref, lim_f in [(relative_metric, plt.xlim), (relative_error, plt.ylim)]:
             axel_start, axel_end = int(min(relative_ref)), int(max(relative_ref))
@@ -222,8 +222,8 @@ def generate_proxy_selection_chart(df, output_sufix):
         counter_metric = metrics[int(not bool(idx))]
 
         # Set labels and use transformation to keep them in the same relative place
-        ax.set_xlabel(f'Relative {metric}', labelpad=10)
-        ax.set_ylabel(f'Relative {counter_metric}', labelpad=10)
+        ax.set_xlabel(f'Relative {counter_metric}', labelpad=10)
+        ax.set_ylabel(f'Relative {metric}', labelpad=10)
 
         # Use `transform=ax.transAxes` to anchor the label positions
         ax.xaxis.set_label_coords(0.5, 1.08, transform=ax.transAxes)  # X-label at the upper center of the plot
@@ -232,7 +232,7 @@ def generate_proxy_selection_chart(df, output_sufix):
         plt.legend(
             loc='upper center',
             bbox_to_anchor=(-0.15, -0.15, 1.3, 0.1),
-            ncol=3,
+            ncol=3 + idx,
             mode='expand',
             fancybox=True,
             shadow=True,

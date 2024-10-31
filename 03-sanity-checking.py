@@ -676,7 +676,7 @@ def generate_csv_analysis_per_application(data, charts_dir):
                     row_data['Wallclock vs All PIs - chartname'] = ''
                     for pm in proxy_metrics_l:
                         row_data[f'{pm} vs All PIs - chartname'] = ''
-                    if charts_dir and False:
+                    if charts_dir:
                         # Plot chart
                         basename = f'{user.replace("/", "-")}_{app[:20]}-{ds}'
                         if len(wall_clock_time_l) >= 3:
