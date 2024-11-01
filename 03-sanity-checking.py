@@ -466,8 +466,8 @@ def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
     )
     # Common parameters
     for kind, ax in {'Real': ax1, pm: ax2}.items():
-        ax.axhline(1.2, linestyle='--', color='gray', alpha=.5)
-        ax.axvline(1.2, linestyle='--', color='gray', alpha=.5)
+        ax.axhline(1.2, linestyle='--', color='gray', alpha=0.5)
+        ax.axvline(1.2, linestyle='--', color='gray', alpha=0.5)
         ax.set_xlabel('Proportional time')
         ax.set_ylabel('Proportional cost')
         ax.legend()
@@ -493,9 +493,13 @@ def calculate_correlations(instance_names_l, proxy_metrics_l, PIs_sum_l, PIs_cos
             df[f'{column} prop.'] = df[column] / df[column].min()
         df['cost-benefit'] = WEIGHT_TIME * df['time/cost prop.'] + WEIGHT_COST * df['cost/time prop.']
 
+    cost_benefit_real = df_real.loc[df_real['cost-benefit'].idxmin()]
+
+    # Generate proportional and time/cost limited by 1.2x cost/time stats
     for metric, counter_metric in zip(metrics, metrics[::-1]):
         idx_min_real_criteria = df_real[metric][df_real[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
         for pm, df in [(pm, data[pm]) for pm in proxies]:
+            cost_benefit_proxy_based = df_real.loc[data[pm]['cost-benefit'].idxmin()]
             # Calculate the fastest/cheapest
             result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
             # Calculate the fastest/cheapest considerim the counter-metric limited
@@ -508,8 +512,12 @@ def calculate_correlations(instance_names_l, proxy_metrics_l, PIs_sum_l, PIs_cos
             result[f'Max {DISCARD_THRESHOLD}x - error - {pm} - {metric}'] = (
                 df_real[counter_metric][min_proxy_criteria_idx] / df_real[counter_metric][idx_min_real_criteria]
             )
-    df_real['instances'] = instance_names_l
-    if charts_dir and any([result[key] > 1 for key in result]):
+
+            # Generate cost-benefit stats
+            result[f'cost-benefit {pm} - {metric}'] = cost_benefit_proxy_based[metric] / cost_benefit_real[metric]
+
+    # df_real['instances'] = instance_names_l
+    if charts_dir and any([result[key] > 2 for key in result]):
         for pm, df in [(pm, data[pm]) for pm in proxies]:
             filename = os.path.join(charts_dir, pareto_subdir, f'{basename}-{pm}.pdf'.replace(' ', '_').lower())
             plot_pareto_comparison(data['real'], df, pm, filename)
@@ -538,7 +546,7 @@ def generate_csv_analysis_per_application(data, charts_dir):
         + [
             f'{mode} {pm} - {metric}'
             for pm in ['From 2 to 5', 'From 2 to 10']
-            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x', f'Max {DISCARD_THRESHOLD}x - error -']
+            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x', f'Max {DISCARD_THRESHOLD}x - error -', 'cost-benefit']
             for metric in ['time', 'cost']
         ]
         + ['Wallclock vs All PIs - chartname']
