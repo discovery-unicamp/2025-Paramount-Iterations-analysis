@@ -431,36 +431,50 @@ def pareto_efficient_mask(df, col1='time', col2='cost'):
 
 def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
     pareto_ref = df_ref[pareto_efficient_mask(df_ref)]
-    pareto_comp = df_ref[pareto_efficient_mask(df_comparison)]
+    pareto_comp_mask = pareto_efficient_mask(df_comparison)
+    pareto_comp = df_comparison[pareto_comp_mask]
     # chose = df_ref.iloc[pareto_ref['cost-benefit'].idxmin()]
 
-    plt.scatter(df_ref['time prop.'], df_ref['cost prop.'], label='All Points - Real', color='blue', s=60)
-    plt.scatter(pareto_ref['time prop.'], pareto_ref['cost prop.'], label='Pareto Front - Real', color='green', s=60)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7), dpi=400)
 
-    # plt.scatter(
-    #     df_comparison['time prop.'],
-    #     df_comparison['cost prop.'],
-    #     label=f'All Points - Proxy {pm}',
-    #     color='yellow',
-    #     marker='x',
-    # )
-    plt.scatter(
-        pareto_comp['time prop.'],
-        pareto_comp['cost prop.'],
+    ax1.scatter(df_ref['time prop.'], df_ref['cost prop.'], label='All Points - Real', color=COLORS[0], s=60)
+    ax1.scatter(pareto_ref['time prop.'], pareto_ref['cost prop.'], label='Pareto Front - Real', color=COLORS[1], s=60)
+    # Plot a cross in the selected instance by proxy
+    ax1.scatter(
+        df_ref[pareto_comp_mask]['time prop.'],
+        df_ref[pareto_comp_mask]['cost prop.'],
         label=f'Pareto Front - Proxy {pm}',
-        color='red',
+        color=COLORS[3],
         # edgecolor='black',
         # alpha=.55,
         marker='x',
         s=50,
     )
-    plt.axhline(1.2, linestyle='--', color='gray')
     # plt.scatter(chose['time'], chose['cost'], label='Cost-benefit', color='red')
 
-    plt.xlabel('Proportional time')
-    plt.ylabel('Proportional cost')
-    plt.title('Pareto Efficient Points')
-    plt.legend()  # TODO: Use df_ref['instances']?
+    ax2.scatter(
+        df_comparison['time prop.'],
+        df_comparison['cost prop.'],
+        label=f'All Points - Proxy {pm}',
+        color=COLORS[2],
+        s=60,
+    )
+    ax2.scatter(
+        pareto_comp['time prop.'],
+        pareto_comp['cost prop.'],
+        label=f'Pareto Front - Proxy {pm}',
+        color=COLORS[3],
+        marker='x',
+        s=60,
+    )
+
+    for kind, ax in {'Real': ax1, pm: ax2}.items():
+        ax.axhline(1.2, linestyle='--', color='gray', alpha=.5)
+        ax.axvline(1.2, linestyle='--', color='gray', alpha=.5)
+        ax.set_xlabel('Proportional time')
+        ax.set_ylabel('Proportional cost')
+        ax.legend()
+        ax.set_title(f'Pareto Efficient Points - {kind}')
     plt.savefig(filename)
     plt.close('all')
 
