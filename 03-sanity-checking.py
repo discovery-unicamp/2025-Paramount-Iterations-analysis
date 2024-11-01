@@ -517,7 +517,7 @@ def calculate_correlations(instance_names_l, proxy_metrics_l, PIs_sum_l, PIs_cos
 
 
 def generate_csv_analysis_per_application(data, charts_dir):
-    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']  # , '0.5_s', '0.5_s-first']
+    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']
     proxy_metrics_2 = ['R2*', 'R2', 'Intercept', 'Slope', 'Intercept/min PIs sum', 'chartname']
     csv_fields = (
         [

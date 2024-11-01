@@ -127,24 +127,26 @@ def generate_latex(df, output_sufix):
     verbose(f'Generate from csv to tex: {output_path}.tex', 1)
 
 
-def generate_histograms(df, output_sufix):
+def generate_histogram(df, sufix, prefix, correlations, proxy_template, xlabel_template, is_pearson):
     bins_size = 100
-    correlations = ['Second PI', 'From 2 to 5', 'From 2 to 10']
     for metric in [('Time', ''), ('Cost', '-Cost')]:
-        count = 0
         fig, axs = plt.subplots(len(correlations), figsize=(9, len(correlations) * 2 - 1))
-        fig.subplots_adjust(
-            top=0.99, bottom=0.05, left=0.1, right=0.95, hspace=0.5
-        )  # Adjust vertical space between subplots
+        fig.subplots_adjust(top=0.99, bottom=0.05, left=0.1, right=0.95, hspace=0.5)
+
         # Calculate bar width based on figure width
         bar_width = fig.get_size_inches()[0] / (2 * bins_size)
-
         max_value = 0
+
         for count, correlation in enumerate(correlations):
-            proxy = f'{correlation}{metric[1]} vs All PIs - R2'
-            # Set x and y limits
-            is_positive = df[proxy].min() >= 0
-            axs[count].set_xlim(left=0 if is_positive else -1, right=1)
+            proxy = proxy_template.format(
+                correlation=correlation, metric_suffix=metric[1], metric_name=metric[0].lower()
+            )
+            if is_pearson:
+                # Set x and y limits
+                is_positive = df[proxy].min() >= 0
+                axs[count].set_xlim(left=0 if is_positive else -1, right=1)
+            else:
+                is_positive = False
 
             # Calculate histogram from the data
             hist, bins = np.histogram(df[proxy], bins=bins_size)
@@ -152,28 +154,51 @@ def generate_histograms(df, output_sufix):
 
             max_value = max(max_value, hist.max())
 
-            # Line histogram
+            # Draw histogram
             axs[count].bar(bin_centers, hist, width=bar_width if is_positive else bar_width / 2)
             title = f'{proxy.split("_", 3)[-1]} histogram'
             axs[count].text(
                 0.5, 0.95, title, transform=axs[count].transAxes, ha='center', va='top', fontsize=14, fontweight='bold'
             )
 
+        # Adjust y-axis limits for all plots
         for ax in axs:
             ax.set_ylim(top=max_value, bottom=-10)
 
         # Add x-label and y-label for all subplots
-        fig.text(0.5, -0.065, f'Pearson correlation of {metric[0]}', ha='center', fontsize=16)
+        xlabel = xlabel_template.format(metric=metric[0])
+        fig.text(0.5, 0.065 * len(correlations) - 0.26, xlabel, ha='center', fontsize=16)
         fig.text(0.01, 0.5, 'Frequency', va='center', rotation='vertical', fontsize=16)
-        filename = f'histogram_{metric[0].lower()}-{output_sufix}.pdf'
+
+        # Save the figure
+        filename = f'{prefix}_{metric[0].lower()}-{sufix}.pdf'
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
         verbose(f'Histogram saved: {filename}', 1)
 
 
-def plot_proxy_selection_histogram(df, output_sufix):
-    # correlations = [key for key in df.keys() if (key.startswith('From') or key.startswith('Max') and 'error' not in key)]
-    pass
+def generate_histograms(df, output_sufix):
+    # Generate Pearson histograms
+    generate_histogram(
+        df,
+        sufix=output_sufix,
+        prefix='histogram',
+        correlations=['Second PI', 'From 2 to 5', 'From 2 to 10'],
+        proxy_template='{correlation}{metric_suffix} vs All PIs - R2',
+        xlabel_template='Pearson correlation of {metric}',
+        is_pearson=True,
+    )
+
+    # Generate proxy proxy proportional histogram
+    generate_histogram(
+        df,
+        sufix=output_sufix,
+        prefix='prop_histogram',
+        correlations=['From 2 to 5', 'From 2 to 10'],
+        proxy_template='Prop. {correlation} - {metric_name}',
+        xlabel_template='Proportion of {metric} selection',
+        is_pearson=False,
+    )
 
 
 # Custom formatter function
