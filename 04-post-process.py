@@ -135,7 +135,6 @@ def generate_histogram(df, sufix, prefix, correlations, proxy_template, xlabel_t
 
         # Calculate bar width based on figure width
         bar_width = fig.get_size_inches()[0] / (2 * bins_size)
-        max_value = 0
 
         for count, correlation in enumerate(correlations):
             proxy = proxy_template.format(
@@ -151,8 +150,7 @@ def generate_histogram(df, sufix, prefix, correlations, proxy_template, xlabel_t
             # Calculate histogram from the data
             hist, bins = np.histogram(df[proxy], bins=bins_size)
             bin_centers = (bins[:-1] + bins[1:]) / 2
-
-            max_value = max(max_value, hist.max())
+            # hist = np.log10(hist + 1)  # Adding 1 to avoid log(0)
 
             # Draw histogram
             axs[count].bar(bin_centers, hist, width=bar_width if is_positive else bar_width / 2)
@@ -162,8 +160,17 @@ def generate_histogram(df, sufix, prefix, correlations, proxy_template, xlabel_t
             )
 
         # Adjust y-axis limits for all plots
+        # Calculate global limits using inline operations
+        x_min = min(ax.get_xlim()[0] for ax in axs)
+        x_max = max(ax.get_xlim()[1] for ax in axs)
+        # Ensure lower y-limit is positive for log scale
+        y_min = max(min(ax.get_ylim()[0] for ax in axs), 1e-1)
+        y_max = max(ax.get_ylim()[1] for ax in axs)
+
         for ax in axs:
-            ax.set_ylim(top=max_value, bottom=-10)
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            ax.set_yscale('log')
 
         # Add x-label and y-label for all subplots
         xlabel = xlabel_template.format(metric=metric[0])

@@ -465,13 +465,19 @@ def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
         s=60,
     )
     # Common parameters
-    for kind, ax in {'Real': ax1, pm: ax2}.items():
+    for kind, ax, metric in ['Real', ax1, 'time'], [pm, ax2, 'cost']:
+        ax.axvline(1.0, linestyle='-.', color='violet', alpha=0.5)
+        ax.axhline(1.0, linestyle='-.', color='violet', alpha=0.5)
         ax.axhline(1.2, linestyle='--', color='gray', alpha=0.5)
         ax.axvline(1.2, linestyle='--', color='gray', alpha=0.5)
         ax.set_xlabel('Proportional time')
         ax.set_ylabel('Proportional cost')
         ax.legend()
         ax.set_title(f'Pareto Efficient Points - {kind}')
+        # Save ax independently
+        # extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        # fig.savefig(filename.replace('.pdf', f'_{metric}.pdf'), bbox_inches=extent.expanded(1.2, 1.2))
+
     plt.savefig(filename)
     plt.close('all')
 
