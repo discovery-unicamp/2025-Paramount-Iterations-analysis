@@ -8,6 +8,7 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy
 
 from utils.app_group import app_group
@@ -109,6 +110,14 @@ def verbose(msg, level=0):
 
 
 # ====================================================
+
+
+costs_subdir = 'costs'
+pareto_subdir = 'pareto'
+
+DISCARD_THRESHOLD = 1.2  # Discard values greathar than 20% of the reference
+WEIGHT_TIME = 1  # Multiply the proportional time weight
+WEIGHT_COST = 1  # Multiply the proportional cost weight
 
 
 # ====================================================
@@ -304,7 +313,8 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     # min_coorelation = min(X_values) / min(Y_values)
     # median_coorelation = statistics.median(X_values) / statistics.median(Y_values)
 
-    # print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): (sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
+    # print(f'Correlation {filename_suffix} {user} - {app_name} - {ds} (R^2 = {r_squared:.3f}): '
+    #       f'(sum {sum_coorelation:.3f}) - (min {min_coorelation:.3f}) - (median {median_coorelation:.3f})')
 
     correlation_factor_str = ''
     # if abs(r_squared - 1.0) < 0.1 and abs(median_coorelation - 1.0) > 0.01:
@@ -407,8 +417,121 @@ def plot_correlation(X_values, X_label, Y_values, Y_label, user, app_name, ds, i
     return filename
 
 
-def generate_csv_analysis_per_application(data, charts_output_directory, costs_subdir=''):
-    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']  # , '0.5_s', '0.5_s-first']
+# Function to determine Pareto efficiency
+def pareto_efficient_mask(df, col1='time', col2='cost'):
+    pareto_mask = np.ones(df.shape[0], dtype=bool)
+    for i, row in df.iterrows():
+        # Compare against all other rows
+        for j, other_row in df.iterrows():
+            if (row[col1] >= other_row[col1]) and (row[col2] >= other_row[col2]) and (i != j):
+                pareto_mask[i] = False
+                break
+    return pareto_mask
+
+
+def plot_pareto_comparison(df_ref, df_comparison, pm, filename):
+    pareto_ref = df_ref[pareto_efficient_mask(df_ref)]
+    pareto_comp_mask = pareto_efficient_mask(df_comparison)
+    pareto_comp = df_comparison[pareto_comp_mask]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7), dpi=400)
+
+    # Plot Real points
+    ax1.scatter(df_ref['time prop.'], df_ref['cost prop.'], label='All Points - Real', color=COLORS[0], s=60)
+    ax1.scatter(pareto_ref['time prop.'], pareto_ref['cost prop.'], label='Pareto Front - Real', color=COLORS[1], s=60)
+    # Plot a cross in the selected instance by proxy
+    ax1.scatter(
+        df_ref[pareto_comp_mask]['time prop.'],
+        df_ref[pareto_comp_mask]['cost prop.'],
+        label=f'Pareto Front - Proxy {pm}',
+        color=COLORS[3],
+        marker='x',
+        s=50,
+    )
+    # Plot proxy points
+    ax2.scatter(
+        df_comparison['time prop.'],
+        df_comparison['cost prop.'],
+        label=f'All Points - Proxy {pm}',
+        color=COLORS[2],
+        s=60,
+    )
+    ax2.scatter(
+        pareto_comp['time prop.'],
+        pareto_comp['cost prop.'],
+        label=f'Pareto Front - Proxy {pm}',
+        color=COLORS[3],
+        marker='x',
+        s=60,
+    )
+    # Common parameters
+    for kind, ax, metric in ['Real', ax1, 'time'], [pm, ax2, 'cost']:
+        ax.axvline(1.0, linestyle='-.', color='violet', alpha=0.5)
+        ax.axhline(1.0, linestyle='-.', color='violet', alpha=0.5)
+        ax.axhline(1.2, linestyle='--', color='gray', alpha=0.5)
+        ax.axvline(1.2, linestyle='--', color='gray', alpha=0.5)
+        ax.set_xlabel('Proportional time')
+        ax.set_ylabel('Proportional cost')
+        ax.legend()
+        ax.set_title(f'Pareto Efficient Points - {kind}')
+        # Save ax independently
+        # extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        # fig.savefig(filename.replace('.pdf', f'_{metric}.pdf'), bbox_inches=extent.expanded(1.2, 1.2))
+
+    plt.savefig(filename)
+    plt.close('all')
+
+
+def calculate_correlations(instance_names_l, proxy_metrics_l, PIs_sum_l, PIs_cost_l, basename, charts_dir):
+    metrics = ['time', 'cost']
+    proxies = ['From 2 to 5', 'From 2 to 10']
+    result = {}
+    df_real = pd.DataFrame({'time': PIs_sum_l, 'cost': PIs_cost_l})
+    data = {'real': df_real}
+    data.update(
+        {pm: pd.DataFrame({'time': proxy_metrics_l[pm], 'cost': proxy_metrics_l[f'{pm}-Cost']}) for pm in proxies}
+    )
+
+    for df in data.values():
+        for metric, counter_metric in zip(metrics, metrics[::-1]):
+            df[f'{metric}/{counter_metric}'] = df[metric] / df[counter_metric]
+        for column in df.columns:
+            df[f'{column} prop.'] = df[column] / df[column].min()
+        df['cost-benefit'] = WEIGHT_TIME * df['time/cost prop.'] + WEIGHT_COST * df['cost/time prop.']
+
+    cost_benefit_real = df_real.loc[df_real['cost-benefit'].idxmin()]
+
+    # Generate proportional and time/cost limited by 1.2x cost/time stats
+    for metric, counter_metric in zip(metrics, metrics[::-1]):
+        idx_min_real_criteria = df_real[metric][df_real[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
+        for pm, df in [(pm, data[pm]) for pm in proxies]:
+            cost_benefit_proxy_based = df_real.loc[data[pm]['cost-benefit'].idxmin()]
+            # Calculate the fastest/cheapest
+            result[f'Prop. {pm} - {metric}'] = df_real[metric][df[metric].idxmin()] / df_real[metric].min()
+            # Calculate the fastest/cheapest considerim the counter-metric limited
+            min_proxy_criteria_idx = df[metric][df[f'{counter_metric} prop.'] < DISCARD_THRESHOLD].idxmin()
+            # result[f'Max {DISCARD_THRESHOLD}x {counter_metric} - {pm}'] = (
+            result[f'Max {DISCARD_THRESHOLD}x {pm} - {metric}'] = (
+                df_real[metric][min_proxy_criteria_idx] / df_real[metric][idx_min_real_criteria]
+            )
+            # result[f'Max {DISCARD_THRESHOLD}x {counter_metric} - error - {pm}'] = (
+            result[f'Max {DISCARD_THRESHOLD}x - error - {pm} - {metric}'] = (
+                df_real[counter_metric][min_proxy_criteria_idx] / df_real[counter_metric][idx_min_real_criteria]
+            )
+
+            # Generate cost-benefit stats
+            result[f'cost-benefit {pm} - {metric}'] = cost_benefit_proxy_based[metric] / cost_benefit_real[metric]
+
+    # df_real['instances'] = instance_names_l
+    if charts_dir and any([result[key] > 2 for key in result]):
+        for pm, df in [(pm, data[pm]) for pm in proxies]:
+            filename = os.path.join(charts_dir, pareto_subdir, f'{basename}-{pm}.pdf'.replace(' ', '_').lower())
+            plot_pareto_comparison(data['real'], df, pm, filename)
+    return result
+
+
+def generate_csv_analysis_per_application(data, charts_dir):
+    proxy_metrics = ['Second PI', 'From 2 to 5', 'From 2 to 10']
     proxy_metrics_2 = ['R2*', 'R2', 'Intercept', 'Slope', 'Intercept/min PIs sum', 'chartname']
     csv_fields = (
         [
@@ -425,6 +548,12 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
             'Rank 0 min PI samples',
             'Rank 0 max PI samples',
             'Rank 0 min/max PI sample ratio',
+        ]
+        + [
+            f'{mode} {pm} - {metric}'
+            for pm in ['From 2 to 5', 'From 2 to 10']
+            for mode in ['Prop.', f'Max {DISCARD_THRESHOLD}x', f'Max {DISCARD_THRESHOLD}x - error -', 'cost-benefit']
+            for metric in ['time', 'cost']
         ]
         + ['Wallclock vs All PIs - chartname']
         + [
@@ -516,6 +645,17 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                         if rank0_samples > rank0_max_samples:
                             rank0_max_samples = rank0_samples
 
+                    row_data.update(
+                        calculate_correlations(
+                            instance_names_l,
+                            proxy_metrics_l,
+                            PIs_sum_l,
+                            PIs_cost_l,
+                            f'{user.replace("/", "-")}-{ds}',
+                            charts_dir,
+                        )
+                    )
+
                     row_data['# instances'] = len(PIs_sum_l)
                     row_data['Rank 0 min PI samples'] = rank0_min_samples
                     row_data['Rank 0 max PI samples'] = rank0_max_samples
@@ -560,11 +700,11 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                     row_data['Wallclock vs All PIs - chartname'] = ''
                     for pm in proxy_metrics_l:
                         row_data[f'{pm} vs All PIs - chartname'] = ''
-                    if charts_output_directory:
+                    if charts_dir:
                         # Plot chart
                         basename = f'{user.replace("/", "-")}_{app[:20]}-{ds}'
                         if len(wall_clock_time_l) >= 3:
-                            filename = os.path.join(charts_output_directory, f'{basename}-wallclock_vs_sum_pi.pdf')
+                            filename = os.path.join(charts_dir, f'{basename}-wallclock_vs_sum_pi.pdf')
                             plot_correlation(
                                 Y_values=PIs_sum_l,
                                 Y_label='Sum of PIs (ms)',
@@ -579,9 +719,7 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                             )
                             row_data['Wallclock vs All PIs - chartname'] = filename
 
-                            filename = os.path.join(
-                                charts_output_directory, costs_subdir, f'{basename}-wallclock_vs_sum_pi-cost.pdf'
-                            )
+                            filename = os.path.join(charts_dir, f'{basename}-wallclock_vs_sum_pi-cost.pdf')
                             plot_correlation(
                                 Y_values=PIs_cost_l,
                                 Y_label='Sum of PIs cost (USD)',
@@ -599,15 +737,13 @@ def generate_csv_analysis_per_application(data, charts_output_directory, costs_s
                         if len(PIs_sum_l) >= 3:
                             for pm in proxy_metrics_l:
                                 filename_suffix = pm.lower().replace(' ', '_') + '_vs_sum_pi'
-                                filename = os.path.join(charts_output_directory, f'{basename}-{filename_suffix}.pdf')
+                                filename = os.path.join(charts_dir, f'{basename}-{filename_suffix}.pdf')
                                 # unit_s = 'USD' if pm.endswith('-Cost') else 'ms'
                                 unit_s = 'ms'
                                 if pm.endswith('-Cost'):
                                     continue
                                     unit_s = 'USD'
-                                    filename = os.path.join(
-                                        charts_output_directory, costs_subdir, f'{basename}-{filename_suffix}.pdf'
-                                    )
+                                    filename = os.path.join(charts_dir, f'{basename}-{filename_suffix}.pdf')
                                 plot_correlation(
                                     X_values=PIs_sum_l,
                                     X_label=f'Sum of PIs ({unit_s})',
@@ -677,10 +813,10 @@ if __name__ == '__main__':
         generate_csv_analysis_per_instance(data)
 
     if args.analysis_per_application:
-        costs_subdir = 'costs'
         if charts_dir := args.application_charts_dir:
+            os.makedirs(os.path.join(charts_dir, pareto_subdir), exist_ok=True)
             os.makedirs(os.path.join(charts_dir, costs_subdir), exist_ok=True)
             os.makedirs(charts_dir, exist_ok=True)
-        generate_csv_analysis_per_application(data, args.application_charts_dir, costs_subdir)
+        generate_csv_analysis_per_application(data, args.application_charts_dir)
 
 # ====================================================
